@@ -22,7 +22,7 @@ dependencies {
 
     compileOnly 'org.spigotmc:spigot:1.17.1-R0.1-SNAPSHOT'
 
-    compileOnly 'ru.ckateptb:tablecloth:1.0-SNAPSHOT'
+    compileOnly 'ru.ckateptb:tablecloth:1.0.0-SNAPSHOT'
     compileOnly 'ru.ckateptb:abilityslots:1.0-SNAPSHOT'
 }
 
