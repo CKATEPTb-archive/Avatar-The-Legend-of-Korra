@@ -1,7 +1,6 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
-import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
@@ -10,22 +9,20 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
-import ru.ckateptb.abilityslots.particle.ParticleEffect;
+import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
+import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.avatar.util.VectorUtils;
 import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.OutOfRangeRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.ProtectRemovalPolicy;
 import ru.ckateptb.abilityslots.user.AbilityUser;
-import ru.ckateptb.tablecloth.collision.collider.AABB;
-import ru.ckateptb.tablecloth.collision.collider.Disc;
-import ru.ckateptb.tablecloth.collision.collider.OBB;
-import ru.ckateptb.tablecloth.collision.collider.Sphere;
+import ru.ckateptb.tablecloth.collision.collider.*;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.Vector3d;
 import ru.ckateptb.tablecloth.util.CollisionUtils;
 
 @Getter
-@Setter
 @AbilityInfo(
         author = "CKATEPTb",
         name = "AirBlade",
@@ -44,22 +41,23 @@ public class AirBlade implements Ability {
     @ConfigField
     private static double radius = 1;
     @ConfigField
+    private static double blockCollisionMultiply = 0.5;
+    @ConfigField
     private static double speed = 1;
     @ConfigField
-    private static int angleStep = 10;
+    private static int angleStep = 9;
 
     private AbilityUser user;
     private LivingEntity entity;
     private Location location;
     private Location origin;
     private Vector3d direction;
-    private Disc collider;
+    private Disc entityCollider;
+    private Disc blockCollider;
     private final CompositeRemovalPolicy removalPolicy = new CompositeRemovalPolicy();
 
     @Override
     public ActivateResult activate(AbilityUser user, ActivationMethod activationMethod) {
-        AbilityInformation information = getInformation();
-        if (user.hasCooldown(information)) return ActivateResult.NOT_ACTIVATE;
         this.setUser(user);
         this.location = entity.getEyeLocation();
         this.origin = location.clone();
@@ -69,10 +67,22 @@ public class AirBlade implements Ability {
                 new ProtectRemovalPolicy(user, () -> this.location)
         );
         this.direction = new Vector3d(this.location.getDirection()).normalize();
-        AABB bounds = new AABB(new Vector3d(-0.15, -radius, -radius), new Vector3d(0.15, radius, radius));
+        double radius = AirBlade.radius * 1.5;
         double angle = Math.toRadians(this.entity.getLocation().getYaw());
-        this.collider = new Disc(new OBB(bounds, Vector3d.PLUS_J, angle), new Sphere(radius));
+
+        AABB entityBounds = new AABB(new Vector3d(-0.15, -radius, -radius), new Vector3d(0.15, radius, radius));
+        OBB entityObb = new OBB(entityBounds, Vector3d.PLUS_J, angle);
+        this.entityCollider = new Disc(entityObb, new Sphere(radius));
+
+        radius = AirBlade.radius;
+
+        AABB blockBounds = new AABB(new Vector3d(-0.15, -radius, -radius), new Vector3d(0.15, radius, radius));
+        OBB blockObb = new OBB(blockBounds, Vector3d.PLUS_J, angle);
+        this.blockCollider = new Disc(blockObb, new Sphere(radius));
+
+        AbilityInformation information = getInformation();
         user.setCooldown(information, information.getCooldown());
+
         return ActivateResult.ACTIVATE;
     }
 
@@ -81,22 +91,21 @@ public class AirBlade implements Ability {
         Location location = this.location.add(direction.multiply(speed).toBukkitVector());
         if (this.removalPolicy.shouldRemove()) return UpdateResult.REMOVE;
 
+
+        Vector3d locationVector = new Vector3d(location);
+
         Vector3d rotationAxis = Vector3d.PLUS_J.cross(this.direction);
+        VectorUtils.circle(new Ray(locationVector, direction).direction.multiply(radius), rotationAxis, 360 / angleStep).forEach(v ->
+                AirElement.display(location.clone().add(v.toBukkitVector()), 1, 0, 0, 0)
+        );
 
-        for (double angle = 0; angle < 360; angle += angleStep) {
-            Vector3d offset = direction.rotate(rotationAxis, Math.toRadians(angle)).multiply(radius);
-            ParticleEffect.SPELL.display(location.clone().add(offset.toBukkitVector()), 1, 0, 0, 0);
-        }
-
-        Disc checkCollider = this.collider.addPosition(location);
-
-        boolean hit = CollisionUtils.handleEntityCollisions(this.entity, checkCollider, (entity) -> {
+        boolean hit = CollisionUtils.handleEntityCollisions(this.entity, entityCollider.at(locationVector), (entity) -> {
             if (entity instanceof LivingEntity) {
                 ((LivingEntity) entity).damage(damage, this.entity);
                 return true;
             }
             return false;
-        }, true) || CollisionUtils.handleBlockCollisions(this.entity, checkCollider, o -> false, block -> block.getType().isSolid(), true).size() > 0;
+        }, true) || CollisionUtils.handleBlockCollisions(this.entity, blockCollider.at(locationVector), o -> false, block -> block.getType().isSolid(), true).size() > 0;
 
         return hit ? UpdateResult.REMOVE : UpdateResult.CONTINUE;
     }
