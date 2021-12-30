@@ -2,6 +2,7 @@ plugins {
     java
     signing
     `maven-publish`
+    id("com.github.johnrengelman.shadow").version("7.1.0")
     id("io.papermc.paperweight.userdev").version("1.3.3")
 }
 
@@ -47,8 +48,11 @@ dependencies {
 }
 
 tasks {
+    shadowJar {
+        archiveFileName.set("${project.name}-${project.version}.${archiveExtension.getOrElse("jar")}")
+    }
     build {
-        dependsOn(reobfJar)
+        dependsOn(reobfJar, shadowJar)
     }
     withType<Sign>().configureEach {
         onlyIf { !isSnapshot() }
