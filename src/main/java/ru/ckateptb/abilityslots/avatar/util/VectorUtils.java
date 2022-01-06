@@ -77,6 +77,18 @@ public final class VectorUtils {
         return arc;
     }
 
+    public static Vector3d rotatePitch(Vector3d vector, double rads) {
+        Vector3d axis = vector.cross(Vector3d.PLUS_J);
+        return rotate(vector, axis, rads);
+    }
+
+    public static Vector3d rotate(Vector3d vector, Vector3d axis, double rads) {
+        Vector3d a = vector.multiply(Math.cos(rads));
+        Vector3d b = axis.cross(vector).multiply(Math.sin(rads));
+        Vector3d c = axis.multiply(axis.dot(vector)).multiply(1 - Math.cos(rads));
+        return a.add(b).add(c);
+    }
+
     /**
      * Inversely repeat a rotation on a specific vector.
      *

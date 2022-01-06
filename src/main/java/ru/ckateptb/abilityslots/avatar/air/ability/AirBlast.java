@@ -116,7 +116,7 @@ public class AirBlast implements Ability {
         if (this.location != null) {
             this.location.add(this.direction.multiply(speed).toBukkitVector());
             Block block = location.getBlock();
-            if (block.isLiquid() || !block.getType().isTransparent() || new CompositeRemovalPolicy(
+            if (block.isLiquid() || !block.isPassable() || new CompositeRemovalPolicy(
                     new IsDeadRemovalPolicy(user),
                     new ProtectRemovalPolicy(user, () -> location),
                     new OutOfWorldRemovalPolicy(user),

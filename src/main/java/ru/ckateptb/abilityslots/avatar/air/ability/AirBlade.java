@@ -16,12 +16,12 @@ import ru.ckateptb.abilityslots.avatar.util.VectorUtils;
 import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
 import ru.ckateptb.abilityslots.user.AbilityUser;
-import ru.ckateptb.tablecloth.collision.collider.Ray;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
+
 @Getter
 @AbilityInfo(
         author = "CKATEPTb",
@@ -43,14 +43,13 @@ public class AirBlade implements Ability {
     @ConfigField
     private static double speed = 2;
     @ConfigField
-    private static int angleStep = 30;
+    private static double step = 0.1;
 
     private AbilityUser user;
     private LivingEntity entity;
     private final CompositeRemovalPolicy removalPolicy = new CompositeRemovalPolicy();
     private final List<Entity> affected = new ArrayList<>();
     private final List<BladeStream> streams = new ArrayList<>();
-    private double size;
 
     @Override
     public ActivateResult activate(AbilityUser user, ActivationMethod activationMethod) {
@@ -60,10 +59,14 @@ public class AirBlade implements Ability {
         );
         Location eyeLocation = entity.getEyeLocation().add(0, -radius, 0);
         Vector3d direction = new Vector3d(eyeLocation.getDirection());
-        for (int i = 0; i <= radius + radius - 1; ++i) {
-            streams.add(new BladeStream(user, eyeLocation.clone().add(0, i, 0), direction, range, speed, 0.5, 0.5, damage));
+        Vector3d rotateAxis = Vector3d.PLUS_J.cross(direction);
+        for (double d = -radius; d < radius; d += step) {
+            double finalD = d;
+            VectorUtils.rotate(direction, rotateAxis, 360, 1).forEach(vector3d -> {
+                Location location = eyeLocation.clone().add(vector3d.normalize().multiply(finalD).toBukkitVector());
+                streams.add(new BladeStream(user, location, direction, range, speed, 0.5, 0.5, damage));
+            });
         }
-        size = Math.max(streams.size(), 1);
         AbilityInformation information = getInformation();
         user.setCooldown(information, information.getCooldown());
 
@@ -93,10 +96,7 @@ public class AirBlade implements Ability {
 
         @Override
         public void render() {
-            Vector3d rotationAxis = Vector3d.PLUS_J.cross(direction);
-            VectorUtils.circle(new Ray(new Vector3d(location), direction).direction.multiply(radius/size), rotationAxis, 360 / angleStep).forEach(v ->
-                    AirElement.display(location.clone().add(v.toBukkitVector()), 1, 0, 0, 0)
-            );
+            AirElement.display(location, 1, 0, 0, 0);
         }
 
         @Override
