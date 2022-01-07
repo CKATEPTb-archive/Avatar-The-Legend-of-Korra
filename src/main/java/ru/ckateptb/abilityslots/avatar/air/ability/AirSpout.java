@@ -17,6 +17,9 @@ import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
+import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
+import ru.ckateptb.abilityslots.removalpolicy.IsOfflineRemovalPolicy;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
 import ru.ckateptb.tablecloth.collision.RayTrace;
@@ -63,6 +66,7 @@ public class AirSpout implements Ability {
     private long nextRenderTime;
     private long startTime;
     private Listener moveHandler;
+    private CompositeRemovalPolicy removalPolicy;
 
     @Override
     public ActivateResult activate(AbilityUser user, ActivationMethod method) {
@@ -84,12 +88,19 @@ public class AirSpout implements Ability {
         this.flight = new TemporaryFlight(livingEntity, duration, true, false, true);
         this.startTime = System.currentTimeMillis();
         this.moveHandler = new MoveHandler(user);
+        this.removalPolicy = new CompositeRemovalPolicy(
+                new IsDeadRemovalPolicy(user),
+                new IsOfflineRemovalPolicy(user)
+        );
         Bukkit.getPluginManager().registerEvents(moveHandler, AbilitySlots.getInstance());
         return ActivateResult.ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
+        if(removalPolicy.shouldRemove()) {
+            return UpdateResult.REMOVE;
+        }
         double maxHeight = height + heightBuffer;
         Location location = livingEntity.getLocation();
         if (!user.canUse(location)) {
