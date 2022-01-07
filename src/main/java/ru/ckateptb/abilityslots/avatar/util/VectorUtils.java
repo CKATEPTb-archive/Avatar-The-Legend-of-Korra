@@ -77,6 +77,14 @@ public final class VectorUtils {
         return arc;
     }
 
+    public static double getNormSq(Vector3d vector3d) {
+        double x =vector3d.getX();
+        double y = vector3d.getY();
+        double z = vector3d.getZ();
+        // there are no cancellation problems here, so we use the straightforward formula
+        return x * x + y * y + z * z;
+    }
+
     public static Vector3d rotatePitch(Vector3d vector, double rads) {
         Vector3d axis = vector.cross(Vector3d.PLUS_J);
         return rotate(vector, axis, rads);
