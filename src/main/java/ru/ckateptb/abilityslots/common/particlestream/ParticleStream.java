@@ -1,4 +1,4 @@
-package ru.ckateptb.abilityslots.avatar.general;
+package ru.ckateptb.abilityslots.common.particlestream;
 
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -20,6 +20,7 @@ public abstract class ParticleStream {
     protected double abilityCollisionRadius;
     protected double blockCollisionRadius;
     protected double damage;
+    protected boolean ignoreLiquids;
     protected Collider collider;
     private AbilityUser user;
     private LivingEntity entity;
@@ -27,13 +28,19 @@ public abstract class ParticleStream {
 
     public ParticleStream(AbilityUser user, Location origin, Vector3d direction,
                           double range, double speed, double entityCollisionRadius, double abilityCollisionRadius,
-                          double damage) {
-        this(user, origin, direction, range, speed, entityCollisionRadius, abilityCollisionRadius, 0.01, damage);
+                          double damage, boolean ignoreLiquids) {
+        this(user, origin, direction, range, speed, entityCollisionRadius, abilityCollisionRadius, 0.1, damage, ignoreLiquids);
     }
 
     public ParticleStream(AbilityUser user, Location origin, Vector3d direction,
                           double range, double speed, double entityCollisionRadius, double abilityCollisionRadius, double blockCollisionRadius,
                           double damage) {
+        this(user, origin, direction, range, speed, entityCollisionRadius, abilityCollisionRadius, blockCollisionRadius, damage, true);
+    }
+
+    public ParticleStream(AbilityUser user, Location origin, Vector3d direction,
+                          double range, double speed, double entityCollisionRadius, double abilityCollisionRadius, double blockCollisionRadius,
+                          double damage, boolean ignoreLiquids) {
         this.user = user;
         this.entity = user.getEntity();
         this.world = entity.getWorld();
@@ -46,6 +53,7 @@ public abstract class ParticleStream {
         this.abilityCollisionRadius = abilityCollisionRadius;
         this.blockCollisionRadius = blockCollisionRadius;
         this.damage = damage;
+        this.ignoreLiquids = ignoreLiquids;
 
         this.collider = new Sphere(new Vector3d(location), abilityCollisionRadius);
     }
@@ -56,6 +64,11 @@ public abstract class ParticleStream {
         location.add(direction.multiply(speed).toBukkitVector());
 
         if (!user.canUse(location)) {
+            return false;
+        }
+
+        Sphere blockCollider = new Sphere(new Vector3d(location), blockCollisionRadius);
+        if(CollisionUtils.handleBlockCollisions(this.entity, blockCollider, o -> false, block -> !block.isPassable() || block.isLiquid(), ignoreLiquids).size() > 0) {
             return false;
         }
 
@@ -70,10 +83,7 @@ public abstract class ParticleStream {
             return false;
         }
 
-        if (previous.equals(origin)) return true;
-
-        Sphere blockCollider = new Sphere(new Vector3d(location), blockCollisionRadius);
-        return CollisionUtils.handleBlockCollisions(this.entity, blockCollider, o -> false, block -> block.getType().isSolid(), true).size() == 0;
+        return true;
     }
 
     public abstract void render();

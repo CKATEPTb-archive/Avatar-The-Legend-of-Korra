@@ -13,7 +13,7 @@ import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.avatar.general.ParticleStream;
+import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
 import ru.ckateptb.abilityslots.common.util.VectorUtils;
 import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;

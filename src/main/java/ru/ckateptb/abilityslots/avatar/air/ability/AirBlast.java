@@ -11,7 +11,7 @@ import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.common.BurstableAbility;
+import ru.ckateptb.abilityslots.common.burst.BurstableAbility;
 import ru.ckateptb.abilityslots.removalpolicy.*;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;

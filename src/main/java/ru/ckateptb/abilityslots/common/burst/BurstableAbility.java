@@ -1,4 +1,4 @@
-package ru.ckateptb.abilityslots.common;
+package ru.ckateptb.abilityslots.common.burst;
 
 import org.bukkit.Location;
 import ru.ckateptb.abilityslots.ability.Ability;

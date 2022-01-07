@@ -43,8 +43,8 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.22")
     annotationProcessor("org.projectlombok:lombok:1.18.22")
     paperDevBundle("1.17.1-R0.1-SNAPSHOT")
-    compileOnly("ru.ckateptb:tablecloth:+")
-    compileOnly("ru.ckateptb:abilityslots:+")
+    compileOnly("ru.ckateptb:tablecloth:1.0.2-SNAPSHOT")
+    compileOnly("ru.ckateptb:abilityslots:1.0.2-SNAPSHOT")
 }
 
 tasks {
@@ -66,7 +66,13 @@ publishing {
     publications {
         publications.create<MavenPublication>("maven") {
             artifacts {
-                from(components["java"])
+                artifact(tasks.shadowJar) {
+                    classifier = ""
+                }
+                if (!isSnapshot()) {
+                    artifact(tasks.javadoc)
+                }
+                artifact(tasks["sourcesJar"])
             }
             pom {
                 name.set(project.name)

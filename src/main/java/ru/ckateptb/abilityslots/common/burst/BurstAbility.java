@@ -4,7 +4,6 @@ package ru.ckateptb.abilityslots.common.burst;
 import org.bukkit.Location;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
-import ru.ckateptb.abilityslots.common.BurstableAbility;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.math.Vector3d;
 
