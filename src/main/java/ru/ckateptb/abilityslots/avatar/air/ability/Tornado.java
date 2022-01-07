@@ -53,7 +53,7 @@ public class Tornado implements Ability {
     @ConfigField
     private static double range = 25;
     @ConfigField
-    private static double moveSpeed = 1;
+    private static double moveSpeed = 0.3;
     @ConfigField
     private static long growthTime = 2500;
     @ConfigField
@@ -177,7 +177,7 @@ public class Tornado implements Ability {
                     Vector3d ortho = normal.cross(Vector3d.PLUS_J).normalize();
                     velocity = ortho.add(normal).normalize().multiply(factor);
                 }
-                entity.setVelocity(velocity.multiply(moveSpeed).toBukkitVector());
+                entity.setVelocity(velocity.multiply(Math.min(moveSpeed, 1)).toBukkitVector());
                 return false;
             }, false, true);
         }
