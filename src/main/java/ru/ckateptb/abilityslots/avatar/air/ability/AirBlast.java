@@ -4,7 +4,6 @@ import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
-import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
@@ -12,6 +11,7 @@ import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.common.BurstableAbility;
 import ru.ckateptb.abilityslots.removalpolicy.*;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
@@ -23,10 +23,10 @@ import ru.ckateptb.tablecloth.util.CollisionUtils;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.concurrent.ThreadLocalRandom;
 
+@Getter
 @AbilityInfo(
         author = "CKATEPTb",
         name = "AirBlast",
@@ -37,11 +37,10 @@ import java.util.stream.Stream;
         instruction = "Example Instruction",
         cooldown = 1250
 )
-@Getter
 @DestroyAbilities(destroyAbilities = {
         AirBlast.class
 })
-public class AirBlast implements Ability {
+public class AirBlast implements BurstableAbility {
     @ConfigField
     private static double selectRange = 8;
     @ConfigField
@@ -61,6 +60,7 @@ public class AirBlast implements Ability {
     private Location location;
     private Vector3d direction;
     private boolean pushSelf;
+    private boolean burst;
     private Collider collider;
 
     @Override
@@ -133,7 +133,9 @@ public class AirBlast implements Ability {
                 entity.setVelocity(this.direction.multiply(pushPower).toBukkitVector());
                 return true;
             }, false, pushSelf);
-            AirElement.display(location, 4, 0.5f, 0.5f, 0.5f);
+            if(!burst || ThreadLocalRandom.current().nextInt(10) == 0) {
+                AirElement.display(location, burst ? 1 : 4, 0.5f, 0.5f, 0.5f);
+            }
         } else {
             if (new CompositeRemovalPolicy(
                     new OutOfRangeRemovalPolicy(() -> this.original, () -> this.entity.getLocation(), selectRange + 2),
@@ -159,7 +161,18 @@ public class AirBlast implements Ability {
 
     @Override
     public Collection<Collider> getColliders() {
-        if(this.collider == null) return Collections.emptyList();
+        if (this.collider == null) return Collections.emptyList();
         return Collections.singleton(collider);
+    }
+
+    @Override
+    // Used to initialize the blast for bursts.
+    public void initialize(AbilityUser user, Location location, Vector3d direction) {
+        this.setUser(user);
+        this.direction = direction;
+        this.original = location.clone();
+        this.location = location.clone();
+        this.pushSelf = false;
+        this.burst = true;
     }
 }

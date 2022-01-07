@@ -11,8 +11,8 @@ import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
+import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.avatar.util.VectorUtils;
 import ru.ckateptb.abilityslots.removalpolicy.*;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
@@ -103,7 +103,7 @@ public class Tornado implements Ability {
 
         Vector3d direction = top.subtract(location);
 
-        if (VectorUtils.getNormSq(direction) > 0) {
+        if (direction.lengthSq() > 0) {
             direction = direction.normalize();
         }
 
@@ -238,7 +238,8 @@ public class Tornado implements Ability {
 
     @Override
     public void destroy() {
-        this.user.setCooldown(getInformation(), getInformation().getCooldown());
+        AbilityInformation information = getInformation();
+        this.user.setCooldown(information, information.getCooldown());
     }
 
     @Override

@@ -1,4 +1,4 @@
-package ru.ckateptb.abilityslots.avatar.util;
+package ru.ckateptb.abilityslots.common.util;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -75,14 +75,6 @@ public final class VectorUtils {
             arc.add(new Vector3d(vector));
         }
         return arc;
-    }
-
-    public static double getNormSq(Vector3d vector3d) {
-        double x =vector3d.getX();
-        double y = vector3d.getY();
-        double z = vector3d.getZ();
-        // there are no cancellation problems here, so we use the straightforward formula
-        return x * x + y * y + z * z;
     }
 
     public static Vector3d rotatePitch(Vector3d vector, double rads) {

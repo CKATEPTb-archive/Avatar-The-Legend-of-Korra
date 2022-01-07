@@ -5,22 +5,27 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
+import ru.ckateptb.abilityslots.ability.enums.AbilityCollisionResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
+import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.avatar.general.ParticleStream;
-import ru.ckateptb.abilityslots.avatar.util.VectorUtils;
+import ru.ckateptb.abilityslots.common.util.VectorUtils;
 import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
 import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.tablecloth.collision.Collider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.Vector3d;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @AbilityInfo(
@@ -33,6 +38,9 @@ import java.util.List;
         instruction = "Example Instruction",
         cooldown = 3500
 )
+@DestroyAbilities(destroyAbilities = {
+        AirShield.class
+})
 public class AirBlade implements Ability {
     @ConfigField
     private static double damage = 4;
@@ -87,6 +95,17 @@ public class AirBlade implements Ability {
 
     @Override
     public void destroy() {
+    }
+
+    @Override
+    public Collection<Collider> getColliders() {
+        return streams.stream().map(ParticleStream::getCollider).collect(Collectors.toList());
+    }
+
+    @Override
+    public AbilityCollisionResult destroyCollider(Ability destroyer, Collider destroyerCollider, Collider destroyedCollider) {
+        streams.removeIf(bladeStream -> bladeStream.getCollider().equals(destroyedCollider));
+        return streams.isEmpty() ? AbilityCollisionResult.DESTROY_INSTANCE : AbilityCollisionResult.NONE;
     }
 
     private class BladeStream extends ParticleStream {
