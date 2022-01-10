@@ -2,9 +2,7 @@ package ru.ckateptb.abilityslots.avatar.earth;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Tag;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import ru.ckateptb.abilityslots.avatar.earth.ability.subcategories.LavaBender;
@@ -73,6 +71,50 @@ public class EarthElement extends AbstractAbilityCategory {
                 .ensureSize("All", 134);
     }
 
+    public static void play(Location location) {
+        Block block = location.getBlock();
+        if (isMetalBendable(block)) {
+            play(location, Type.METAL);
+        } else if (isLavaBendable(block)) {
+            play(location, Type.LAVA);
+        } else if (isSandBendable(block)) {
+            play(location, Type.SAND);
+        } else {
+            play(location, Type.EARTH);
+        }
+    }
+
+    public static void play(Location location, Type type) {
+        switch (type) {
+            case SAND: {
+                playSound(location, Sound.BLOCK_SAND_BREAK, 1, 1);
+                return;
+            }
+            case METAL: {
+                playSound(location, Sound.ENTITY_IRON_GOLEM_HURT, 1, 1.25);
+                return;
+            }
+            case LAVA: {
+                playSound(location, Sound.BLOCK_LAVA_AMBIENT, 1, 1);
+                return;
+            }
+            default: {
+                playSound(location, Sound.ENTITY_GHAST_SHOOT, 1, 1);
+            }
+        }
+    }
+
+    private static void playSound(Location location, Sound sound, double volume, double pitch) {
+        location.getWorld().playSound(location, sound, (float) volume, (float) pitch);
+    }
+
+
+    public enum Type {
+        EARTH,
+        SAND,
+        METAL,
+        LAVA
+    }
 
     public static boolean isEarthBendable(@NonNull AbilityUser user, @NonNull Block block) {
         if (isMetalBendable(block) && !isMetalBender(user)) {

@@ -77,8 +77,13 @@ public final class VectorUtils {
         return arc;
     }
 
+
+    public static Vector3d rotateYaw(Vector3d vector, double rads) {
+        return rotate(vector, Vector3d.PLUS_J, rads);
+    }
+
     public static Vector3d rotatePitch(Vector3d vector, double rads) {
-        Vector3d axis = vector.cross(Vector3d.PLUS_J);
+        Vector3d axis = vector.cross(Vector3d.PLUS_J).normalize(Vector3d.PLUS_I);
         return rotate(vector, axis, rads);
     }
 
