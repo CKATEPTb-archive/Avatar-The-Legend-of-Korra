@@ -115,6 +115,7 @@ public class AirBlast implements BurstableAbility, AirFlow {
         if (this.location != null) {
             this.location.add(this.direction.multiply(speed).toBukkitVector());
             Block block = location.getBlock();
+            AirElement.handleBlockInteractions(user, block);
             if (block.isLiquid() || !block.isPassable() || new CompositeRemovalPolicy(
                     new IsDeadRemovalPolicy(user),
                     new ProtectRemovalPolicy(user, () -> location),
@@ -130,6 +131,7 @@ public class AirBlast implements BurstableAbility, AirFlow {
                     pushPower = pushPowerSelf;
                 }
                 entity.setVelocity(this.direction.multiply(pushPower).toBukkitVector());
+                entity.setFireTicks(0);
                 return true;
             }, false, pushSelf);
             if (!burst || ThreadLocalRandom.current().nextInt(10) == 0) {

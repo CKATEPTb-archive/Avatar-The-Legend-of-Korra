@@ -3,12 +3,14 @@ package ru.ckateptb.abilityslots.avatar.air;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import ru.ckateptb.abilityslots.category.AbstractAbilityCategory;
 import ru.ckateptb.abilityslots.particle.ParticleEffect;
 import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
 
 @Getter
 @Setter
@@ -43,9 +45,15 @@ public class AirElement extends AbstractAbilityCategory {
     }
 
     public static void handleBlockInteractions(AbilityUser user, Block block) {
-        //TODO Сделать взаимодействие с блоками (тушение огня, взаимодействие с лавой)
-        //TODO Сделать тушение огня на способностях воздуха, которые применяют setVelocity
-        //TODO Реализовать destroyCollider на способностях, где это еще не реализовано, но нужно!
-
+        Location location = block.getLocation();
+        if(!user.canUse(location)) return;
+        Material type = block.getType();
+        if(type == Material.LAVA) {
+            new TemporaryBlock(location, Material.OBSIDIAN.createBlockData(), 60000);
+        }
+        if(type == Material.FIRE || type == Material.SOUL_FIRE) {
+            new TemporaryBlock(location, Material.AIR.createBlockData(), 60000);
+        }
     }
+
 }

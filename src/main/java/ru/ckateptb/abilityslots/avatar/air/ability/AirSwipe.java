@@ -8,6 +8,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import ru.ckateptb.abilityslots.ability.Ability;
+import ru.ckateptb.abilityslots.ability.enums.AbilityCollisionResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
@@ -192,13 +193,21 @@ public class AirSwipe implements Ability {
     @Override
     public Collection<Collider> getColliders() {
         return streams.stream()
-                .map((stream) -> new Sphere(stream.location, abilityCollisionRadius))
+                .map(SwipeStream::getCollider)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public AbilityCollisionResult destroyCollider(Ability destroyer, Collider destroyerCollider, Collider destroyedCollider) {
+        streams.removeIf(stream -> destroyedCollider == stream.getCollider());
+        return streams.isEmpty() ? AbilityCollisionResult.DESTROY_INSTANCE : AbilityCollisionResult.NONE;
     }
 
     private class SwipeStream {
         private Vector3d location;
         private final Vector3d direction;
+        @Getter
+        private Collider collider;
 
         SwipeStream(Vector3d origin, Vector3d direction) {
             this.location = origin;
@@ -218,6 +227,8 @@ public class AirSwipe implements Ability {
             }
 
             AirElement.display(location.toLocation(world), 1,0.0f, 0.0f, 0.0f, 0.0f);
+
+            this.collider = new Sphere(location, abilityCollisionRadius);
 
             Collider collider = new Sphere(location, entityCollisionRadius);
             if (collide(collider)) {
