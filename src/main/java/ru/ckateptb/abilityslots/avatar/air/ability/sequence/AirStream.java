@@ -232,6 +232,7 @@ public class AirStream implements Ability {
 
     @Override
     public Collection<Collider> getColliders() {
+        if (this.collider == null) return Collections.emptyList();
         return Collections.singletonList(collider);
     }
 
