@@ -24,8 +24,8 @@ import ru.ckateptb.tablecloth.math.Vector3d;
         displayName = "AirGlide",
         activationMethods = {ActivationMethod.SNEAK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "Replaces falling with a slow and steady descent",
+        instruction = "Hold Sneak at falling time",
         cooldown = 4000
 )
 public class AirGlide implements Ability {

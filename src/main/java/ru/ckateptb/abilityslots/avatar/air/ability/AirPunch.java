@@ -10,6 +10,7 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
 import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
@@ -17,11 +18,14 @@ import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.IsOfflineRemovalPolicy;
 import ru.ckateptb.abilityslots.service.AbilityInstanceService;
 import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.tablecloth.collision.Collider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.Vector3d;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @AbilityInfo(
@@ -30,10 +34,11 @@ import java.util.List;
         displayName = "AirPunch",
         activationMethods = {ActivationMethod.LEFT_CLICK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "High density air currents to deal minor damage. Multiple hits can be made before the ability runs out of cooldown.",
+        instruction = "Left Click",
         cooldown = 3500
 )
+@CollisionParticipant
 public class AirPunch implements Ability {
     @ConfigField
     private static long threshold = 2500;
@@ -101,6 +106,12 @@ public class AirPunch implements Ability {
             Location eyeLocation = livingEntity.getEyeLocation();
             streams.add(new PunchStream(user, eyeLocation, new Vector3d(eyeLocation.getDirection()), range, speed, 0.5, 0.5, damage));
         }
+    }
+
+
+    @Override
+    public Collection<Collider> getColliders() {
+        return streams.stream().map(ParticleStream::getCollider).collect(Collectors.toList());
     }
 
     private class PunchStream extends ParticleStream {

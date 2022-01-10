@@ -8,8 +8,11 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
-import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.avatar.air.ability.sequence.AirSlam;
+import ru.ckateptb.abilityslots.avatar.air.ability.sequence.AirStream;
+import ru.ckateptb.abilityslots.avatar.air.ability.sequence.AirSweep;
 import ru.ckateptb.abilityslots.removalpolicy.*;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
@@ -28,14 +31,21 @@ import java.util.Collections;
         displayName = "AirShield",
         activationMethods = {ActivationMethod.SNEAK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "Creates an air barrier around you that prevents anyone from approaching and destroys many abilities",
+        instruction = "Hold Sneak",
         cooldown = 6000
 )
-@DestroyAbilities(destroyAbilities = {
+@CollisionParticipant(destroyAbilities = {
         AirBlast.class,
+        AirSwipe.class,
+        AirSweep.class,
+        AirStream.class,
         AirBreath.class,
-        Tornado.class
+        Tornado.class,
+        SonicBlast.class,
+        AirSuction.class,
+        AirPunch.class,
+        AirSlam.class
 })
 public class AirShield implements Ability {
     @ConfigField
@@ -45,9 +55,9 @@ public class AirShield implements Ability {
     @ConfigField
     private static double maxPush = 3;
     @ConfigField
-    private static double renderParticleSpeed = 7;
+    private static double renderParticleSpeed = 2;
     @ConfigField
-    private static int renderParticleStreams = 1;
+    private static int renderParticleStreams = 5;
     @ConfigField
     private static int renderParticleCount = 5;
 
@@ -59,7 +69,7 @@ public class AirShield implements Ability {
     @Override
     public ActivateResult activate(AbilityUser user, ActivationMethod method) {
         this.setUser(user);
-        if(!user.canUse(livingEntity.getLocation())) {
+        if (!user.canUse(livingEntity.getLocation())) {
             return ActivateResult.NOT_ACTIVATE;
         }
         this.removalPolicy = new CompositeRemovalPolicy(
@@ -68,7 +78,7 @@ public class AirShield implements Ability {
                 new OutOfWorldRemovalPolicy(user),
                 new SneakingRemovalPolicy(user, true)
         );
-        if(duration > 0) {
+        if (duration > 0) {
             this.removalPolicy.addPolicy(new DurationRemovalPolicy(duration));
         }
         return ActivateResult.ACTIVATE;
@@ -128,7 +138,7 @@ public class AirShield implements Ability {
             Vector3d normal = toEntity.setY(0).normalize();
             double strength = ((radius - toEntity.length()) / radius) * maxPush;
             strength = Math.max(0, Math.min(1, strength));
-            entity.setVelocity( new Vector3d(entity.getVelocity()).add(normal.multiply(strength)).toBukkitVector());
+            entity.setVelocity(new Vector3d(entity.getVelocity()).add(normal.multiply(strength)).toBukkitVector());
             return false;
         }, false);
 

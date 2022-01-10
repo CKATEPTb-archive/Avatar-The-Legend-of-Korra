@@ -23,8 +23,12 @@ import ru.ckateptb.tablecloth.math.Vector3d;
         displayName = "AirBurst",
         activationMethods = {ActivationMethod.LEFT_CLICK, ActivationMethod.FALL, ActivationMethod.SNEAK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "Harness all the chaos in the air around you, allowing you to channel its energy into a multitude of AirBlast. You and only you decide how to use it, around you, along a cone or when falling",
+        instruction = "Several ways to use:\n" +
+                "1. Select the ability when falling from a height\n" +
+                "2. Hold Sneak to accumulate air\n" +
+                "2.1. Left Click to create a cone\n" +
+                "2.2. Release Sneak to blast the accumulated air",
         cooldown = 3000
 )
 public class AirBurst extends BurstAbility {

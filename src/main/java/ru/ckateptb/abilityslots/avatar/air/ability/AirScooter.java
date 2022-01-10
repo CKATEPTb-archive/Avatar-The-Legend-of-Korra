@@ -29,8 +29,8 @@ import java.util.concurrent.ThreadLocalRandom;
         displayName = "AirScooter",
         activationMethods = {ActivationMethod.LEFT_CLICK, ActivationMethod.DAMAGE},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "Creates a balloon under your feet for movement",
+        instruction = "Jump and Left Click at sprinting time",
         cooldown = 3500
 )
 public class AirScooter implements Ability {

@@ -1,6 +1,7 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
@@ -9,8 +10,9 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
-import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.avatar.air.general.AirFlow;
 import ru.ckateptb.abilityslots.common.burst.BurstableAbility;
 import ru.ckateptb.abilityslots.removalpolicy.*;
 import ru.ckateptb.abilityslots.user.AbilityUser;
@@ -33,59 +35,49 @@ import java.util.concurrent.ThreadLocalRandom;
         displayName = "AirBlast",
         activationMethods = {ActivationMethod.SNEAK, ActivationMethod.LEFT_CLICK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "A strong but harmless stream of air that flies from point B to point A, capturing everything in its path. If item A is not specified, it will be specified automatically",
+        instruction = "Tap Sneak to indicate the source (point A, optional). Left Click",
         cooldown = 1250
 )
-@DestroyAbilities(destroyAbilities = {
+@CollisionParticipant(destroyAbilities = {
+        AirSuction.class,
+        AirSwipe.class,
         AirBlast.class
 })
-public class AirBlast implements BurstableAbility {
+public class AirBlast implements BurstableAbility, AirFlow {
     @ConfigField
+    @Getter
     private static double selectRange = 8;
     @ConfigField
+    @Getter
     private static double distance = 20;
     @ConfigField
     private static double speed = 1.2;
     @ConfigField
-    private static double pushRadius = 0.7;
+    private static double pushRadius = 1.5;
     @ConfigField
     private static double pushPowerSelf = 2.1;
     @ConfigField
     private static double pushPowerOther = 2.1;
 
     private AbilityUser user;
-    private LivingEntity entity;
+    private LivingEntity livingEntity;
+    @Setter
     private Location original;
     private Location location;
     private Vector3d direction;
+    @Setter
     private boolean pushSelf;
     private boolean burst;
     private Collider collider;
 
     @Override
     public ActivateResult activate(AbilityUser abilityUser, ActivationMethod activationMethod) {
-        ActivateResult result = ActivateResult.ACTIVATE;
-        Optional<? extends AirBlast> optional = getAbilityInstanceService().getAbilityUserInstances(abilityUser, getClass()).stream()
-                .filter(ability -> ability.getLocation() == null).findFirst();
-        AirBlast airBlast = this;
-        if (optional.isPresent()) {
-            airBlast = optional.get();
-            result = ActivateResult.NOT_ACTIVATE;
-        }
-
-        this.setUser(abilityUser);
-
-        if (activationMethod == ActivationMethod.SNEAK && !airBlast.selectOriginal()) {
-            return ActivateResult.NOT_ACTIVATE;
-        } else if (activationMethod == ActivationMethod.LEFT_CLICK) {
-            airBlast.launch();
-        }
-        return result;
+        return getActivationResult(abilityUser, activationMethod, getAbilityInstanceService().getAbilityUserInstances(abilityUser, getClass()).stream().filter(ability -> ability.getLocation() == null).findFirst());
     }
 
-    private void launch() {
-        Location eyeLocation = entity.getEyeLocation();
+    public void launch() {
+        Location eyeLocation = livingEntity.getEyeLocation();
         if (this.original == null) {
             this.original = eyeLocation;
             this.pushSelf = false;
@@ -96,15 +88,22 @@ public class AirBlast implements BurstableAbility {
         this.user.setCooldown(information, information.getCooldown());
     }
 
-    private boolean selectOriginal() {
+    public boolean selectOriginal() {
+        return selectOriginal(this);
+    }
+
+    public static boolean selectOriginal(AirFlow flow) {
+        AbilityUser user = flow.getUser();
+        LivingEntity entity = user.getEntity();
         Location eyeLocation = entity.getEyeLocation();
         Vector3d eyeVector = new Vector3d(eyeLocation);
         Vector3d direction = new Vector3d(eyeLocation.getDirection());
         boolean ignoreLiquids = eyeLocation.getBlock().isLiquid();
-        this.original = RayTrace.of(eyeVector, direction).range(selectRange).ignoreLiquids(ignoreLiquids).result(entity.getWorld()).position().subtract(direction.multiply(0.5)).toLocation(eyeLocation.getWorld());
-        this.pushSelf = true;
-        if (this.original.getBlock().isLiquid() || !user.canUse(this.original)) {
-            this.original = null;
+        Location original = RayTrace.of(eyeVector, direction).range(selectRange).ignoreLiquids(ignoreLiquids).result(entity.getWorld()).position().subtract(direction.multiply(0.5)).toLocation(eyeLocation.getWorld());
+        flow.setOriginal(original);
+        flow.setPushSelf(true);
+        if (original.getBlock().isLiquid() || !user.canUse(original)) {
+            flow.setOriginal(null);
             return false;
         }
         return true;
@@ -125,20 +124,20 @@ public class AirBlast implements BurstableAbility {
                 return UpdateResult.REMOVE;
             }
             this.collider = new Sphere(new Vector3d(location), pushRadius);
-            CollisionUtils.handleEntityCollisions(entity, collider, (entity) -> {
+            CollisionUtils.handleEntityCollisions(livingEntity, collider, (entity) -> {
                 double pushPower = pushPowerOther;
-                if (entity == this.entity) {
+                if (entity == this.livingEntity) {
                     pushPower = pushPowerSelf;
                 }
                 entity.setVelocity(this.direction.multiply(pushPower).toBukkitVector());
                 return true;
             }, false, pushSelf);
-            if(!burst || ThreadLocalRandom.current().nextInt(10) == 0) {
+            if (!burst || ThreadLocalRandom.current().nextInt(10) == 0) {
                 AirElement.display(location, burst ? 1 : 4, 0.5f, 0.5f, 0.5f);
             }
         } else {
             if (new CompositeRemovalPolicy(
-                    new OutOfRangeRemovalPolicy(() -> this.original, () -> this.entity.getLocation(), selectRange + 2),
+                    new OutOfRangeRemovalPolicy(() -> this.original, () -> this.livingEntity.getLocation(), selectRange + 2),
                     new SwappedSlotsRemovalPolicy<>(user, AirBlast.class)
             ).shouldRemove()) {
                 return UpdateResult.REMOVE;
@@ -156,7 +155,7 @@ public class AirBlast implements BurstableAbility {
     @Override
     public void setUser(AbilityUser abilityUser) {
         this.user = abilityUser;
-        this.entity = abilityUser.getEntity();
+        this.livingEntity = abilityUser.getEntity();
     }
 
     @Override
@@ -168,11 +167,19 @@ public class AirBlast implements BurstableAbility {
     @Override
     // Used to initialize the blast for bursts.
     public void initialize(AbilityUser user, Location location, Vector3d direction) {
+        this.initialize(user, location, direction, false, true);
+    }
+
+    public void initialize(AbilityUser user, Location location, Vector3d direction, boolean pushSelf) {
+        this.initialize(user, location, direction, pushSelf, false);
+    }
+
+    public void initialize(AbilityUser user, Location location, Vector3d direction, boolean pushSelf, boolean burst) {
         this.setUser(user);
         this.direction = direction;
         this.original = location.clone();
         this.location = location.clone();
-        this.pushSelf = false;
-        this.burst = true;
+        this.pushSelf = pushSelf;
+        this.burst = burst;
     }
 }

@@ -11,7 +11,7 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
-import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
 import ru.ckateptb.abilityslots.common.util.VectorUtils;
@@ -34,24 +34,22 @@ import java.util.stream.Collectors;
         displayName = "AirBlade",
         activationMethods = {ActivationMethod.LEFT_CLICK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "Gathers air into an improvised blade that slices through the air in front of you, damaging your targets",
+        instruction = "Left Click",
         cooldown = 3500
 )
-@DestroyAbilities(destroyAbilities = {
-        AirShield.class
-})
+@CollisionParticipant
 public class AirBlade implements Ability {
     @ConfigField
     private static double damage = 4;
     @ConfigField
     private static double range = 20;
     @ConfigField
-    private static double radius = 1.5;
+    private static double radius = 3;
     @ConfigField
-    private static double speed = 2;
+    private static double speed = 1.3;
     @ConfigField
-    private static double step = 0.1;
+    private static double step = 0.6;
 
     private AbilityUser user;
     private LivingEntity entity;

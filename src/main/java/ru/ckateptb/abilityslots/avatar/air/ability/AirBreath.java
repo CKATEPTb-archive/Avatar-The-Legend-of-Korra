@@ -10,33 +10,42 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
 import ru.ckateptb.abilityslots.removalpolicy.*;
 import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.tablecloth.collision.Collider;
 import ru.ckateptb.tablecloth.collision.collider.Sphere;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.Vector3d;
 import ru.ckateptb.tablecloth.util.CollisionUtils;
 import ru.ckateptb.tablecloth.util.WorldUtils;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Getter
 @AbilityInfo(
         author = "CKATEPTb",
         name = "AirBreath",
         displayName = "AirBreath",
-        activationMethods = {ActivationMethod.SNEAK},
+        activationMethods = {ActivationMethod.SNEAK, ActivationMethod.DAMAGE},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "Releases air from your lungs with such force that you can lift yourself up or push your enemies away",
+        instruction = "Hold Sneak",
         cooldown = 3500
 )
+@CollisionParticipant
 public class AirBreath implements Ability {
     @ConfigField
     private static long duration = 7000;
     @ConfigField
-    private static double damage = 1;
+    private static double damage = 0;
     @ConfigField
-    private static int particles = 4;
+    private static int particles = 1;
     @ConfigField
     private static double range = 10;
     @ConfigField
@@ -49,12 +58,15 @@ public class AirBreath implements Ability {
     private AbilityUser user;
     private LivingEntity livingEntity;
     private Vector3d direction;
-    private Sphere collider;
+    private final List<Collider> colliders = new ArrayList<>();
     private CompositeRemovalPolicy removalPolicy;
 
     @Override
     public ActivateResult activate(AbilityUser user, ActivationMethod method) {
         this.setUser(user);
+        if (getAbilityInstanceService().destroyInstanceType(user, AirScooter.class) || method == ActivationMethod.DAMAGE) {
+            return ActivateResult.NOT_ACTIVATE;
+        }
         this.removalPolicy = new CompositeRemovalPolicy(
                 new SneakingRemovalPolicy(user, true),
                 new IsDeadRemovalPolicy(user),
@@ -74,7 +86,7 @@ public class AirBreath implements Ability {
         }
         double step = 1;
         double size = 0;
-
+        colliders.clear();
         for (double i = 0; i < range; i += step) {
             eyeLocation = eyeLocation.add(direction.multiply(step).toBukkitVector());
             size += 0.005;
@@ -86,7 +98,8 @@ public class AirBreath implements Ability {
                 return UpdateResult.CONTINUE;
             }
             Location finalLoc = eyeLocation.clone();
-            collider = new Sphere(new Vector3d(eyeLocation.toVector()), 2);
+            Sphere collider = new Sphere(new Vector3d(eyeLocation.toVector()), 2);
+            colliders.add(collider);
             for (Block handleBlock : WorldUtils.getNearbyBlocks(finalLoc, 2)) {
                 AirElement.handleBlockInteractions(user, handleBlock);
             }
@@ -100,6 +113,11 @@ public class AirBreath implements Ability {
             AirElement.display(eyeLocation, particles, (float) size, (float) Math.random(), (float) Math.random(), (float) Math.random());
         }
         return UpdateResult.CONTINUE;
+    }
+
+    @Override
+    public Collection<Collider> getColliders() {
+        return colliders;
     }
 
     @Override

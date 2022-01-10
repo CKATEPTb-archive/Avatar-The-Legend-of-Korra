@@ -1,8 +1,8 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.Location;
-import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
@@ -10,21 +10,21 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
-import ru.ckateptb.abilityslots.ability.info.DestroyAbilities;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.removalpolicy.*;
+import ru.ckateptb.abilityslots.avatar.air.general.AirFlow;
+import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
+import ru.ckateptb.abilityslots.removalpolicy.OutOfRangeRemovalPolicy;
+import ru.ckateptb.abilityslots.removalpolicy.SwappedSlotsRemovalPolicy;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
 import ru.ckateptb.tablecloth.collision.RayTrace;
-import ru.ckateptb.tablecloth.collision.collider.Sphere;
-import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.Vector3d;
-import ru.ckateptb.tablecloth.util.CollisionUtils;
 import ru.ckateptb.tablecloth.util.WorldUtils;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Optional;
 
 @Getter
 @AbilityInfo(
@@ -33,61 +33,36 @@ import java.util.Optional;
         displayName = "AirSuction",
         activationMethods = {ActivationMethod.SNEAK, ActivationMethod.LEFT_CLICK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "A strong but harmless stream of air that flies from point A to point B, capturing everything in its path. If item B is not specified, it will be specified automatically",
+        instruction = "Tap Sneak to indicate the destination (point B, optional). Left Click",
         cooldown = 1250
 )
-@DestroyAbilities(destroyAbilities = {
-        AirSuction.class
+@CollisionParticipant(destroyAbilities = {
+        AirSuction.class,
+        AirSwipe.class,
+        AirBlast.class
 })
-public class AirSuction implements Ability {
-    @ConfigField
-    private static double selectRange = 8;
-    @ConfigField
-    private static double distance = 20;
-    @ConfigField
-    private static double speed = 1.2;
-    @ConfigField
-    private static double pushRadius = 0.7;
-    @ConfigField
-    private static double pushPowerSelf = 2.1;
-    @ConfigField
-    private static double pushPowerOther = 2.1;
-
+public class AirSuction implements Ability, AirFlow {
     private AbilityUser user;
     private LivingEntity entity;
-    private Location destination;
+    @Setter
     private Location original;
     private Location location;
     private Vector3d direction;
+    @Setter
     private boolean pushSelf;
-    private Collider collider;
+    private AirBlast blast;
 
     @Override
     public ActivateResult activate(AbilityUser abilityUser, ActivationMethod activationMethod) {
-        ActivateResult result = ActivateResult.ACTIVATE;
-        Optional<? extends AirSuction> optional = getAbilityInstanceService().getAbilityUserInstances(abilityUser, getClass()).stream()
-                .filter(ability -> ability.getLocation() == null).findFirst();
-        AirSuction airSuction = this;
-        if (optional.isPresent()) {
-            airSuction = optional.get();
-            result = ActivateResult.NOT_ACTIVATE;
-        }
+        return getActivationResult(abilityUser, activationMethod, getAbilityInstanceService().getAbilityUserInstances(abilityUser, getClass()).stream().filter(ability -> ability.getLocation() == null).findFirst());
 
-        this.setUser(abilityUser);
-
-        if (activationMethod == ActivationMethod.SNEAK && !airSuction.selectOriginal()) {
-            return ActivateResult.NOT_ACTIVATE;
-        } else if (activationMethod == ActivationMethod.LEFT_CLICK) {
-            airSuction.launch();
-        }
-        return result;
     }
 
-    private void launch() {
+    public void launch() {
         Location eyeLocation = entity.getEyeLocation();
-        if (this.destination == null) {
-            this.destination = eyeLocation;
+        if (this.original == null) {
+            this.original = eyeLocation;
             this.pushSelf = false;
         }
         Vector3d direction = new Vector3d(eyeLocation.getDirection());
@@ -95,70 +70,50 @@ public class AirSuction implements Ability {
         RayTrace.CompositeResult result = RayTrace.of(new Vector3d(eyeLocation), direction)
                 .type(RayTrace.Type.COMPOSITE)
                 .filter(e -> e instanceof LivingEntity && e != entity)
-                .range(distance).ignoreLiquids(ignoreLiquids)
+                .range(AirBlast.getDistance()).ignoreLiquids(ignoreLiquids)
                 .result(entity.getWorld());
         LivingEntity livingEntity = (LivingEntity) result.entity();
-        if(livingEntity != null) {
-            this.original = WorldUtils.getEntityCenter(livingEntity).toLocation(livingEntity.getWorld());
+        if (livingEntity != null) {
+            this.location = WorldUtils.getEntityCenter(livingEntity).toLocation(livingEntity.getWorld());
         } else {
-            this.original = result
+            this.location = result
                     .position()
                     .subtract(direction.multiply(0.5))
                     .toLocation(eyeLocation.getWorld());
         }
-        this.direction = new Vector3d(destination.clone().subtract(original)).normalize();
-        this.location = original.clone();
+        this.direction = new Vector3d(original.clone().subtract(location)).normalize();
+
+        try {
+            this.blast = AirBlast.class.getConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        this.blast.initialize(user, this.location, this.direction, this.pushSelf);
+
         AbilityInformation information = getInformation();
         this.user.setCooldown(information, information.getCooldown());
     }
 
 
-    private boolean selectOriginal() {
-        Location eyeLocation = entity.getEyeLocation();
-        Vector3d eyeVector = new Vector3d(eyeLocation);
-        Vector3d direction = new Vector3d(eyeLocation.getDirection());
-        boolean ignoreLiquids = eyeLocation.getBlock().isLiquid();
-        this.destination = RayTrace.of(eyeVector, direction).range(selectRange).ignoreLiquids(ignoreLiquids).result(entity.getWorld()).position().subtract(direction.multiply(0.5)).toLocation(eyeLocation.getWorld());
-        this.pushSelf = true;
-        if (this.destination.getBlock().isLiquid() || !user.canUse(this.destination)) {
-            this.destination = null;
-            return false;
-        }
-        return true;
+    public boolean selectOriginal() {
+        return AirBlast.selectOriginal(this);
     }
 
     @Override
     public UpdateResult update() {
-        if (this.destination == null) return UpdateResult.REMOVE;
-        if (this.location != null) {
-            Block block = location.getBlock();
-            if (block.isLiquid() || !block.isPassable() || new CompositeRemovalPolicy(
-                    new IsDeadRemovalPolicy(user),
-                    new ProtectRemovalPolicy(user, () -> location),
-                    new OutOfWorldRemovalPolicy(user),
-                    new OutOfRangeRemovalPolicy(() -> this.original, () -> location, distance)
-            ).shouldRemove()) {
-                return UpdateResult.REMOVE;
-            }
-            this.collider = new Sphere(new Vector3d(location), pushRadius);
-            CollisionUtils.handleEntityCollisions(entity, collider, (entity) -> {
-                double pushPower = pushPowerOther;
-                if (entity == this.entity) {
-                    pushPower = pushPowerSelf;
-                }
-                entity.setVelocity(this.direction.multiply(pushPower).toBukkitVector());
-                return true;
-            }, false, pushSelf);
-            AirElement.display(location, 4, 0.5f, 0.5f, 0.5f);
-            this.location.add(this.direction.multiply(speed).toBukkitVector());
+        if (this.original == null) return UpdateResult.REMOVE;
+        if (this.blast != null) {
+            return this.blast.update();
         } else {
             if (new CompositeRemovalPolicy(
-                    new OutOfRangeRemovalPolicy(() -> this.destination, () -> this.entity.getLocation(), selectRange + 2),
+                    new OutOfRangeRemovalPolicy(() -> this.original, () -> this.entity.getLocation(), AirBlast.getSelectRange() + 2),
                     new SwappedSlotsRemovalPolicy<>(user, AirSuction.class)
             ).shouldRemove()) {
                 return UpdateResult.REMOVE;
             }
-            AirElement.display(this.destination, 4, 0.5f, 0.5f, 0.5f);
+            AirElement.display(this.original, 4, 0.5f, 0.5f, 0.5f);
         }
         return UpdateResult.CONTINUE;
     }
@@ -176,7 +131,9 @@ public class AirSuction implements Ability {
 
     @Override
     public Collection<Collider> getColliders() {
-        if (this.collider == null) return Collections.emptyList();
-        return Collections.singleton(collider);
+        if (blast == null) {
+            return Collections.emptyList();
+        }
+        return blast.getColliders();
     }
 }

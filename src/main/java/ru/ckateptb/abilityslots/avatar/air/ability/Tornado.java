@@ -12,6 +12,7 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.removalpolicy.*;
 import ru.ckateptb.abilityslots.user.AbilityUser;
@@ -39,19 +40,20 @@ import java.util.concurrent.ThreadLocalRandom;
         displayName = "Tornado",
         activationMethods = {ActivationMethod.SNEAK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "An extremely powerful ability that creates a controlled tornado that is capable of lifting all targets in its path into the air",
+        instruction = "Hold Sneak",
         cooldown = 3500
 )
+@CollisionParticipant
 public class Tornado implements Ability {
     @ConfigField
     private static long duration = 8000;
     @ConfigField
-    private static double radius = 10;
+    private static double radius = 7;
     @ConfigField
     private static double height = 15;
     @ConfigField
-    private static double range = 25;
+    private static double range = 5;
     @ConfigField
     private static double moveSpeed = 0.3;
     @ConfigField
@@ -59,7 +61,7 @@ public class Tornado implements Ability {
     @ConfigField
     private static boolean elevateOther = true;
     @ConfigField
-    private static int particlesPerStream = 10;
+    private static int particlesPerStream = 30;
     @ConfigField(comment = "Set 0 for realistic tornado")
     private static int streams = 0;
     @ConfigField

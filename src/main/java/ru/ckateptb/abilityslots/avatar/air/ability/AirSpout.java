@@ -42,8 +42,8 @@ import java.util.concurrent.ThreadLocalRandom;
         displayName = "AirSpout",
         activationMethods = {ActivationMethod.LEFT_CLICK},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
+        description = "Creates a column of air below you that allows you to soar above the ground",
+        instruction = "Left Click",
         cooldown = 0
 )
 public class AirSpout implements Ability {

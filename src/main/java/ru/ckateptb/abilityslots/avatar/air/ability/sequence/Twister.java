@@ -14,6 +14,7 @@ import ru.ckateptb.abilityslots.ability.enums.SequenceAction;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.ability.sequence.AbilityAction;
 import ru.ckateptb.abilityslots.ability.sequence.Sequence;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
@@ -45,9 +46,10 @@ import java.util.concurrent.ThreadLocalRandom;
         displayName = "Twister",
         activationMethods = {ActivationMethod.SEQUENCE},
         category = "air",
-        description = "Example Description",
-        instruction = "Example Instruction",
-        cooldown = 4000
+        description = "Create a cyclone of air that travels along the ground grabbing nearby entities.",
+        instruction = "AirShield (Tap Shift) > Tornado (Hold Shift) > AirBlast (Left Click)",
+        cooldown = 4000,
+        canBindToSlot = false
 )
 @Sequence({
         @AbilityAction(ability = AirShield.class, action = SequenceAction.SNEAK),
@@ -55,6 +57,7 @@ import java.util.concurrent.ThreadLocalRandom;
         @AbilityAction(ability = Tornado.class, action = SequenceAction.SNEAK),
         @AbilityAction(ability = AirBlast.class, action = SequenceAction.LEFT_CLICK)
 })
+@CollisionParticipant
 public class Twister implements Ability {
     @ConfigField
     private static long duration = 8000;
