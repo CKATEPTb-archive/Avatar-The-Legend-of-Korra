@@ -43,6 +43,9 @@ public class AirElement extends AbstractAbilityCategory {
     }
 
     public static void handleBlockInteractions(AbilityUser user, Block block) {
+        //TODO Сделать взаимодействие с блоками (тушение огня, взаимодействие с лавой)
+        //TODO Сделать тушение огня на способностях воздуха, которые применяют setVelocity
+        //TODO Реализовать destroyCollider на способностях, где это еще не реализовано, но нужно!
 
     }
 }

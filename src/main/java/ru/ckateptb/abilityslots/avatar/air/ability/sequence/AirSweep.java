@@ -5,20 +5,14 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
-import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
-import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
-import ru.ckateptb.abilityslots.ability.enums.SequenceAction;
-import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
+import ru.ckateptb.abilityslots.ability.enums.*;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.ability.sequence.AbilityAction;
 import ru.ckateptb.abilityslots.ability.sequence.Sequence;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.avatar.air.ability.AirBlast;
-import ru.ckateptb.abilityslots.avatar.air.ability.AirBurst;
-import ru.ckateptb.abilityslots.avatar.air.ability.AirSuction;
-import ru.ckateptb.abilityslots.avatar.air.ability.AirSwipe;
+import ru.ckateptb.abilityslots.avatar.air.ability.*;
 import ru.ckateptb.abilityslots.common.math.CubicHermiteSpline;
 import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
 import ru.ckateptb.abilityslots.user.AbilityUser;
@@ -176,6 +170,12 @@ public class AirSweep implements Ability {
         return streams.stream()
                 .map(ParticleStream::getCollider)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public AbilityCollisionResult destroyCollider(Ability destroyer, Collider destroyerCollider, Collider destroyedCollider) {
+        streams.removeIf(stream -> destroyedCollider == stream.getCollider());
+        return streams.isEmpty() ? AbilityCollisionResult.DESTROY_INSTANCE : AbilityCollisionResult.NONE;
     }
 
     private class SweepStream extends ParticleStream {

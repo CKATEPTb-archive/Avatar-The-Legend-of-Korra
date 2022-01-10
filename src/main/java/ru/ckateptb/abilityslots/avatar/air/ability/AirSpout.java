@@ -16,6 +16,7 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
 import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
@@ -46,6 +47,7 @@ import java.util.concurrent.ThreadLocalRandom;
         instruction = "Left Click",
         cooldown = 0
 )
+@CollisionParticipant
 public class AirSpout implements Ability {
     @ConfigField
     private static long duration = 0;
