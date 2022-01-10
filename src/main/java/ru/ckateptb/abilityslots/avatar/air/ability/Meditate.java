@@ -90,7 +90,7 @@ public class Meditate implements Ability {
 
     @Override
     public void destroy() {
-        user.setCooldown(getInformation(), getInformation().getCooldown());
+        user.setCooldown(this);
     }
 
     @Override

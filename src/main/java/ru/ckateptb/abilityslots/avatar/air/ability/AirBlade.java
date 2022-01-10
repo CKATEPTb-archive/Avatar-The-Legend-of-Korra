@@ -73,8 +73,7 @@ public class AirBlade implements Ability {
                 streams.add(new BladeStream(user, location, direction, range, speed, 0.5, 0.5, damage));
             });
         }
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
 
         return ActivateResult.ACTIVATE;
     }

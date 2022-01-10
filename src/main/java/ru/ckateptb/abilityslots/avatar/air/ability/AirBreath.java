@@ -122,8 +122,7 @@ public class AirBreath implements Ability {
 
     @Override
     public void destroy() {
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
     }
 
     private boolean isLocationSafe(Location loc) {

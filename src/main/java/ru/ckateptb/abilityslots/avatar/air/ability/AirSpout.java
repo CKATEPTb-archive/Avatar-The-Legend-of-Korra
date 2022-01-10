@@ -166,8 +166,7 @@ public class AirSpout implements Ability {
     @Override
     public void destroy() {
         SpringContext.getInstance().getBean(TemporaryService.class).revert(flight);
-        AbilityInformation information = getInformation();
-        this.user.setCooldown(information, information.getCooldown());
+        this.user.setCooldown(this);
         PlayerMoveEvent.getHandlerList().unregister(moveHandler);
     }
 

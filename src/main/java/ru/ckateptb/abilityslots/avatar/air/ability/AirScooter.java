@@ -96,8 +96,7 @@ public class AirScooter implements Ability {
 
     @Override
     public void destroy() {
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
     }
 
     @Override

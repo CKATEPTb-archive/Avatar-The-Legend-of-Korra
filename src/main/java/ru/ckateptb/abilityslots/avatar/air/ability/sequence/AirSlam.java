@@ -88,8 +88,7 @@ public class AirSlam implements Ability {
         target.setVelocity(new Vector3d(0, 2, 0).toBukkitVector());
         new TemporaryFlight(target, 20000, true, true, false);
         this.time = System.currentTimeMillis();
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
         return ActivateResult.ACTIVATE;
     }
 

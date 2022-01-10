@@ -147,8 +147,7 @@ public class AirShield implements Ability {
 
     @Override
     public void destroy() {
-        AbilityInformation information = getInformation();
-        this.user.setCooldown(information, information.getCooldown());
+        this.user.setCooldown(this);
     }
 
     @Override

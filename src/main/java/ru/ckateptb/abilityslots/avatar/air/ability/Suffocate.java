@@ -219,8 +219,7 @@ public class Suffocate implements Ability {
 
     @Override
     public void destroy() {
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
         AbilityUser target = SpringContext.getInstance().getBean(AbilityUserService.class).getAbilityUser(this.target);
         if (this.started && target != null) {
             // Allow the user to bend again.

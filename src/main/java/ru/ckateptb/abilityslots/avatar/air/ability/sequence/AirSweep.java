@@ -95,8 +95,7 @@ public class AirSweep implements Ability {
         this.origin = null;
         this.world = livingEntity.getWorld();
 
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
 
         return getOriginLocation().toBlock(world).isLiquid() ? ActivateResult.NOT_ACTIVATE : ActivateResult.ACTIVATE;
     }

@@ -220,8 +220,7 @@ public class AirStream implements Ability {
 
     @Override
     public void destroy() {
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
 
         for (TemporaryFlight flight : flights) {
             SpringContext.getInstance().getBean(TemporaryService.class).revert(flight);

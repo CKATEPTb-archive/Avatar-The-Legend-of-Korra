@@ -113,8 +113,7 @@ public class Twister implements Ability {
         this.origin = base;
         this.currentHeight = height;
 
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
         return ActivateResult.ACTIVATE;
     }
 

@@ -155,8 +155,7 @@ public class AirSwipe implements Ability {
 
     private void launch() {
         charging = false;
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
 
         Location eyeLocation = livingEntity.getEyeLocation();
 

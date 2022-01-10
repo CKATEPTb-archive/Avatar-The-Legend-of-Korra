@@ -92,8 +92,7 @@ public class AirSuction implements Ability, AirFlow {
 
         this.blast.initialize(user, this.location, this.direction, this.pushSelf);
 
-        AbilityInformation information = getInformation();
-        this.user.setCooldown(information, information.getCooldown());
+        this.user.setCooldown(this);
     }
 
 

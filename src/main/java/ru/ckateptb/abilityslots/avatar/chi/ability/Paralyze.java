@@ -66,8 +66,7 @@ public class Paralyze implements Ability {
                 new OutOfWorldRemovalPolicy(user)
         );
 
-        AbilityInformation information = getInformation();
-        user.setCooldown(information, information.getCooldown());
+        user.setCooldown(this);
         return ActivateResult.ACTIVATE_AND_CANCEL_EVENT;
     }
 

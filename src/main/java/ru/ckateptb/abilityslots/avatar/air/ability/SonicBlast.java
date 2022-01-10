@@ -110,8 +110,7 @@ public class SonicBlast implements Ability {
                 location = new Vector3d(eyeLocation).add(direction.multiply(speed));
                 origin = location;
                 world.playSound(location.toLocation(world), Sound.ENTITY_GENERIC_EXPLODE, 1, 0);
-                AbilityInformation information = getInformation();
-                user.setCooldown(information, information.getCooldown());
+                user.setCooldown(this);
                 removalPolicy.removePolicyType(SwappedSlotsRemovalPolicy.class);
             }
             location = location.add(direction.multiply(speed));

@@ -84,8 +84,7 @@ public class AirBlast implements BurstableAbility, AirFlow {
         }
         this.direction = new Vector3d(eyeLocation.getDirection()).normalize();
         this.location = this.original.clone();
-        AbilityInformation information = getInformation();
-        this.user.setCooldown(information, information.getCooldown());
+        this.user.setCooldown(this);
     }
 
     public boolean selectOriginal() {
