@@ -14,11 +14,15 @@ import ru.ckateptb.abilityslots.common.paper.MaterialTags;
 import ru.ckateptb.abilityslots.common.paper.PersistentDataLayer;
 import ru.ckateptb.abilityslots.service.AbilityInstanceService;
 import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.spring.SpringContext;
 
 @Getter
 @Setter
 public class EarthElement extends AbstractAbilityCategory {
+    @ConfigField
+    @Getter
+    private static long revertTime = 60000;
     private final String name = "Earth";
     private String displayName = "§2Earth";
     private String prefix = "§2";

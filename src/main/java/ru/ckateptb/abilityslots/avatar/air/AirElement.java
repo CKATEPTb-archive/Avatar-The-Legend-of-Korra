@@ -10,11 +10,15 @@ import org.bukkit.block.Block;
 import ru.ckateptb.abilityslots.category.AbstractAbilityCategory;
 import ru.ckateptb.abilityslots.particle.ParticleEffect;
 import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
 
 @Getter
 @Setter
 public class AirElement extends AbstractAbilityCategory {
+    @ConfigField
+    @Getter
+    private static long revertTime = 60000;
     private final String name = "Air";
     private String displayName = "§7Air";
     private String prefix = "§7";
@@ -49,10 +53,10 @@ public class AirElement extends AbstractAbilityCategory {
         if(!user.canUse(location)) return;
         Material type = block.getType();
         if(type == Material.LAVA) {
-            new TemporaryBlock(location, Material.OBSIDIAN.createBlockData(), 60000);
+            new TemporaryBlock(location, Material.OBSIDIAN.createBlockData(), revertTime);
         }
         if(type == Material.FIRE || type == Material.SOUL_FIRE) {
-            new TemporaryBlock(location, Material.AIR.createBlockData(), 60000);
+            new TemporaryBlock(location, Material.AIR.createBlockData(), revertTime);
         }
     }
 

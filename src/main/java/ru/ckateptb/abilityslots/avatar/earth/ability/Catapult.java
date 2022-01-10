@@ -156,8 +156,8 @@ public class Catapult implements Ability {
             Location newBlockLocation = newBlock.getLocation();
 
             if (user.canUse(currentBlockLocation) && user.canUse(newBlockLocation)) {
-                new TemporaryBlock(newBlockLocation, currentBlock.getBlockData(), 6000);
-                new TemporaryBlock(currentBlockLocation, Material.AIR.createBlockData(), 6000);
+                new TemporaryBlock(newBlockLocation, currentBlock.getBlockData(), EarthElement.getRevertTime());
+                new TemporaryBlock(currentBlockLocation, Material.AIR.createBlockData(), EarthElement.getRevertTime());
             }
         }
     }
