@@ -9,6 +9,8 @@ import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.avatar.air.ability.sequence.AirStream;
+import ru.ckateptb.abilityslots.avatar.air.ability.sequence.AirSweep;
 import ru.ckateptb.abilityslots.entity.AbilityTarget;
 import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.tablecloth.collision.Collider;
@@ -36,8 +38,8 @@ import java.util.concurrent.CompletableFuture;
 @CollisionParticipant(destroyAbilities = {
         AirBlast.class,
         AirSwipe.class,
-//        AirSweep.class,
-//        AirStream.class,
+        AirSweep.class,
+        AirStream.class,
         AirBreath.class,
         Tornado.class,
         SonicBlast.class,
