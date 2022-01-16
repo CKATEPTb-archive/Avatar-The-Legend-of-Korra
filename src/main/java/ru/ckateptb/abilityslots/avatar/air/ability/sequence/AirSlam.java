@@ -19,7 +19,6 @@ import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.abilityslots.service.AbilityInstanceService;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
 
 @Getter
 @AbilityInfo(
@@ -77,7 +76,6 @@ public class AirSlam extends Ability {
 
         this.direction = user.getDirection();
         target.setVelocity(new ImmutableVector(0, 2, 0));
-        new TemporaryFlight(target, 20000, true, true, false);
         this.time = System.currentTimeMillis();
         user.setCooldown(this);
         return ActivateResult.ACTIVATE;

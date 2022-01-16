@@ -75,7 +75,7 @@ public class AirSpout extends Ability {
             return ActivateResult.NOT_ACTIVATE;
         }
         this.nextRenderTime = System.currentTimeMillis();
-        this.flight = new TemporaryFlight(livingEntity, duration, true, false, true);
+        this.flight = new TemporaryFlight(livingEntity, duration, false, false, true);
         this.startTime = System.currentTimeMillis();
         this.moveHandler = new MoveHandler(user, this);
         this.removal = new RemovalConditional.Builder()

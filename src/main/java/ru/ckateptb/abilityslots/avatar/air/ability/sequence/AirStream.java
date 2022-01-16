@@ -2,8 +2,6 @@ package ru.ckateptb.abilityslots.avatar.air.ability.sequence;
 
 import lombok.Getter;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -25,9 +23,6 @@ import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-import ru.ckateptb.tablecloth.spring.SpringContext;
-import ru.ckateptb.tablecloth.temporary.TemporaryService;
-import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
 
 import java.util.*;
 
@@ -68,7 +63,6 @@ public class AirStream extends Ability {
 
     private ImmutableVector location;
     private ImmutableVector origin;
-    private final List<TemporaryFlight> flights = new ArrayList<>();
     private RemovalConditional removal;
     private SphereCollider collider;
     private final List<TailData> tail = new ArrayList<>();
@@ -131,9 +125,6 @@ public class AirStream extends Ability {
         collider.handleEntityCollision(livingEntity, false, (entity) -> {
             if (!affected.containsKey(entity) && !immune.contains(entity)) {
                 affected.put(entity, System.currentTimeMillis() + entityDuration);
-                if (entity instanceof Player) {
-                    flights.add(new TemporaryFlight((LivingEntity) entity, entityDuration, true, false, true));
-                }
             }
             return CollisionCallbackResult.CONTINUE;
         });
@@ -145,16 +136,7 @@ public class AirStream extends Ability {
             ImmutableVector targetLocation = target.getLocation();
             long end = entry.getValue();
             if (targetLocation.distance(this.location) > 5 || time > end) {
-                if (entity instanceof Player) {
-                    flights.removeIf((flight) -> {
-                        if(flight.getLivingEntity().equals(entity)) {
-                            SpringContext.getInstance().getBean(TemporaryService.class).revert(flight);
-                            return true;
-                        }
-                        return false;
-                    });
-                }
-                if(time > end) {
+                if (time > end) {
                     immune.add(entity);
                 }
                 iterator.remove();
@@ -215,9 +197,6 @@ public class AirStream extends Ability {
     @Override
     public void destroy() {
         user.setCooldown(this);
-        for (TemporaryFlight flight : flights) {
-            SpringContext.getInstance().getBean(TemporaryService.class).revert(flight);
-        }
     }
 
     @Override
