@@ -9,9 +9,11 @@ import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
+import ru.ckateptb.abilityslots.common.cooldown.CooldownMultiplier;
 import ru.ckateptb.abilityslots.entity.AbilityTarget;
 import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.abilityslots.service.AbilityInstanceService;
+import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
 import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
@@ -20,6 +22,8 @@ import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @Getter
 @AbilityInfo(
@@ -30,7 +34,7 @@ import java.util.Collections;
         category = "air",
         description = "A strong but harmless stream of air that flies from point A to point B, capturing everything in its path. If item B is not specified, it will be specified automatically",
         instruction = "Tap Sneak to indicate the destination \\(point B, optional\\). Left Click",
-        cooldown = 1250,
+        cooldown = 250,
         cost = 5
 )
 @CollisionParticipant(destroyAbilities = {
@@ -39,6 +43,7 @@ import java.util.Collections;
         AirSuction.class
 })
 public class AirSuction extends Ability {
+    private static final Map<AbilityUser, CooldownMultiplier> previousCast = new HashMap<>();
     @Getter
     @ConfigField
     private static double selectRange = 8;
@@ -53,6 +58,10 @@ public class AirSuction extends Ability {
     private static double pushPowerSelf = 2.1;
     @ConfigField
     private static double pushPowerOther = 2.1;
+    @ConfigField
+    private static long cooldownIncrease = 250;
+    @ConfigField
+    private static long cooldownThreshold = 2500;
 
     private ImmutableVector original;
     private ImmutableVector location;
@@ -146,7 +155,8 @@ public class AirSuction extends Ability {
                 .canUse(() -> this.location.toLocation(world))
                 .range(() -> this.original.toLocation(world), () -> this.location.toLocation(world), distance)
                 .build();
-        user.setCooldown(this);
+        CooldownMultiplier cooldownMultiplier = previousCast.computeIfAbsent(user, key -> new CooldownMultiplier(this, cooldownThreshold, cooldownIncrease));
+        user.setCooldown(this.getInformation(), cooldownMultiplier.increaseAndGetCooldown());
     }
 
     @Override
