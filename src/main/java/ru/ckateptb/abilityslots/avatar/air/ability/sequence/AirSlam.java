@@ -8,20 +8,17 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.SequenceAction;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.sequence.AbilityAction;
 import ru.ckateptb.abilityslots.ability.sequence.Sequence;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.avatar.air.ability.AirBlast;
 import ru.ckateptb.abilityslots.avatar.air.ability.AirSwipe;
-import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.IsOfflineRemovalPolicy;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.entity.AbilityTargetLiving;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.abilityslots.service.AbilityInstanceService;
-import ru.ckateptb.abilityslots.user.AbilityUser;
-import ru.ckateptb.tablecloth.collision.RayTrace;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
 
 @Getter
@@ -32,8 +29,9 @@ import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
         activationMethods = {ActivationMethod.SEQUENCE},
         category = "air",
         description = "Raises the target vertically and repels it with a strong air flow, dealing damage",
-        instruction = "Look at the target and follow these steps: AirSwipe (Hold Sneak) > AirBlast (Release Sneak) > AirBlast (Hold Sneak)",
+        instruction = "Look at the target and follow these steps: AirSwipe \\(Hold Sneak\\) > AirBlast \\(Release Sneak\\) > AirBlast \\(Hold Sneak\\)",
         cooldown = 4000,
+        cost = 10,
         canBindToSlot = false
 )
 @Sequence({
@@ -41,7 +39,7 @@ import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
         @AbilityAction(ability = AirBlast.class, action = SequenceAction.SNEAK_RELEASE),
         @AbilityAction(ability = AirBlast.class, action = SequenceAction.SNEAK)
 })
-public class AirSlam implements Ability {
+public class AirSlam extends Ability {
     @ConfigField
     private static int range = 8;
     @ConfigField
@@ -51,41 +49,34 @@ public class AirSlam implements Ability {
     @ConfigField
     private static double damage = 6;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
-    private Vector3d direction;
+    private ImmutableVector direction;
     private long time;
-    private LivingEntity target;
-    private CompositeRemovalPolicy removalPolicy;
+    private AbilityTargetLiving target;
+    private RemovalConditional removal;
     private boolean launch = true;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
+    public ActivateResult activate(ActivationMethod method) {
+        LivingEntity target = user.findLivingEntity(range, 2);
 
-        this.target = (LivingEntity) RayTrace.of(livingEntity)
-                .range(range)
-                .raySize(2)
-                .type(RayTrace.Type.ENTITY)
-                .filter(e -> e instanceof LivingEntity && e != livingEntity)
-                .result(livingEntity.getWorld()).entity();
-
-        if (target == null || !user.canUse(target.getLocation()) || target.getLocation().getBlock().isLiquid()) {
+        if (target == null || !user.canUse(target.getLocation()) || target.getLocation().getBlock().isLiquid() || !user.removeEnergy(this)) {
             return ActivateResult.NOT_ACTIVATE;
         }
+
+        this.target = AbilityTarget.of(target);
 
         AbilityInstanceService abilityInstanceService = getAbilityInstanceService();
         abilityInstanceService.destroyInstanceType(user, AirSwipe.class);
         abilityInstanceService.destroyInstanceType(user, AirBlast.class);
 
-        this.removalPolicy = new CompositeRemovalPolicy(
-                new IsDeadRemovalPolicy(user),
-                new IsOfflineRemovalPolicy(user)
-        );
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .build();
 
-        this.direction = new Vector3d(livingEntity.getEyeLocation().getDirection());
-        target.setVelocity(new Vector3d(0, 2, 0).toBukkitVector());
+        this.direction = user.getDirection();
+        target.setVelocity(new ImmutableVector(0, 2, 0));
         new TemporaryFlight(target, 20000, true, true, false);
         this.time = System.currentTimeMillis();
         user.setCooldown(this);
@@ -94,15 +85,14 @@ public class AirSlam implements Ability {
 
     @Override
     public UpdateResult update() {
-        if (removalPolicy.shouldRemove()) {
-            return UpdateResult.REMOVE;
-        }
-        AirElement.display(target.getLocation(), particles, 0.275f, 0.275f, 0.275f);
+        if (removal.shouldRemove(user, this)) return UpdateResult.REMOVE;
+        LivingEntity entity = target.getEntity();
+        AirElement.display(entity.getLocation(), particles, 0.275f, 0.275f, 0.275f);
         if (launch && System.currentTimeMillis() > time + 50) {
             launch = false;
-            target.setNoDamageTicks(0);
-            target.damage(damage, livingEntity);
-            target.setVelocity(new Vector3d(direction.getX(), 0.05, direction.getZ()).multiply(power).toBukkitVector());
+            entity.setNoDamageTicks(0);
+            target.damage(damage, this);
+            target.setVelocity(new ImmutableVector(direction.getX(), 0.05, direction.getZ()).multiply(power), this);
         }
         if (System.currentTimeMillis() > time + (400 * power)) {
             return UpdateResult.REMOVE;
@@ -113,11 +103,5 @@ public class AirSlam implements Ability {
     @Override
     public void destroy() {
 
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
     }
 }

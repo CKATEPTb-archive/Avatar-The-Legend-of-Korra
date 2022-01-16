@@ -1,24 +1,28 @@
 package ru.ckateptb.abilityslots.avatar.air.ability.sequence;
 
 import lombok.Getter;
-import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.*;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.ability.sequence.AbilityAction;
 import ru.ckateptb.abilityslots.ability.sequence.Sequence;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.avatar.air.ability.*;
+import ru.ckateptb.abilityslots.avatar.air.ability.AirBlast;
+import ru.ckateptb.abilityslots.avatar.air.ability.AirBurst;
+import ru.ckateptb.abilityslots.avatar.air.ability.AirSuction;
+import ru.ckateptb.abilityslots.avatar.air.ability.AirSwipe;
 import ru.ckateptb.abilityslots.common.math.CubicHermiteSpline;
-import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
-import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.entity.AbilityTargetLiving;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.tablecloth.collision.Collider;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,8 +37,9 @@ import java.util.stream.Collectors;
         activationMethods = {ActivationMethod.SEQUENCE},
         category = "air",
         description = "Sweep the air in front of you hitting multiple enemies, causing moderate damage and a large knockback. The radius and direction of AirSweep is controlled by moving your mouse in a sweeping motion. For example, if you want to AirSweep upward, then move your mouse upward right after you left click AirBurst",
-        instruction = "AirSwipe (Left Click) > AirBurst (Hold Shift) > AirBurst (Left Click) > Move the mouse (optional)",
+        instruction = "AirSwipe \\(Left Click\\) > AirBurst \\(Hold Shift\\) > AirBurst \\(Left Click\\) > Move the mouse \\(optional\\)",
         cooldown = 6000,
+        cost = 15,
         canBindToSlot = false
 )
 @Sequence({
@@ -46,10 +51,10 @@ import java.util.stream.Collectors;
         AirBlast.class,
         AirSweep.class,
         AirSuction.class,
-        AirSweep.class,
+        AirSwipe.class,
         Twister.class
 })
-public class AirSweep implements Ability {
+public class AirSweep extends Ability {
     @ConfigField
     private static double range = 14;
     @ConfigField
@@ -71,43 +76,35 @@ public class AirSweep implements Ability {
     @ConfigField
     private static boolean startFromLegs = true;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
     private long startTime;
     private CubicHermiteSpline spline;
-    private List<ParticleStream> streams;
+    private final List<SweepStream> streams = new ArrayList<>();
     private final List<Entity> affected = new ArrayList<>();
     private int launchCount;
     private boolean linear;
-    private Vector3d origin;
+    private ImmutableVector origin;
     private double potential;
-    private World world;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
+    public ActivateResult activate(ActivationMethod method) {
         getAbilityInstanceService().destroyInstanceType(user, AirBurst.class);
         this.startTime = System.currentTimeMillis();
         this.spline = new CubicHermiteSpline(0.1);
-        this.streams = new ArrayList<>();
         this.linear = "linear".equalsIgnoreCase(interpolationMethod);
         this.origin = null;
         this.world = livingEntity.getWorld();
-
+        if (!user.removeEnergy(this)) return ActivateResult.NOT_ACTIVATE;
         user.setCooldown(this);
-
         return getOriginLocation().toBlock(world).isLiquid() ? ActivateResult.NOT_ACTIVATE : ActivateResult.ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
         long time = System.currentTimeMillis();
-
         if (time < startTime + sampleTime) {
             // Sample target positions and add them to the spline.
             // These positions get interpolated later.
-            Vector3d position = getOriginLocation().add(new Vector3d(livingEntity.getEyeLocation().getDirection().multiply(range)));
+            ImmutableVector position = getOriginLocation().add(user.getDirection().multiply(range));
             spline.addKnot(position);
 
             return UpdateResult.CONTINUE;
@@ -119,9 +116,9 @@ public class AirSweep implements Ability {
 
         // Clear out any intermediate knots so it becomes a line.
         if (linear && spline.getKnots().size() > 2) {
-            List<Vector3d> knots = spline.getKnots();
-            Vector3d begin = knots.get(0);
-            Vector3d end = knots.get(knots.size() - 1);
+            List<ImmutableVector> knots = spline.getKnots();
+            ImmutableVector begin = knots.get(0);
+            ImmutableVector end = knots.get(knots.size() - 1);
 
             knots.clear();
             spline.addKnot(begin);
@@ -136,15 +133,15 @@ public class AirSweep implements Ability {
 
             for (int i = 0; i < count; ++i) {
                 // Interpolate based on the initial samples gathered.
-                Vector3d target = spline.interpolate(launchCount / (double) streamCount);
-                Vector3d direction = target.subtract(this.origin).normalize();
+                ImmutableVector target = spline.interpolate(launchCount / (double) streamCount);
+                ImmutableVector direction = target.subtract(this.origin).normalize();
 
-                streams.add(new SweepStream(user, this.origin, direction, range, speed, 1, 1, damage));
+                streams.add(new SweepStream(this, this.origin, direction));
                 ++launchCount;
             }
         }
 
-        streams.removeIf(stream -> !stream.update());
+        streams.removeIf(stream -> stream.update() == UpdateResult.REMOVE);
 
         return (streams.isEmpty() && launchCount >= streamCount) ? UpdateResult.REMOVE : UpdateResult.CONTINUE;
     }
@@ -154,20 +151,14 @@ public class AirSweep implements Ability {
 
     }
 
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
-    }
-
-    private Vector3d getOriginLocation() {
-        return new Vector3d(startFromLegs ? livingEntity.getLocation() : livingEntity.getEyeLocation());
+    private ImmutableVector getOriginLocation() {
+        return new ImmutableVector(startFromLegs ? livingEntity.getLocation() : livingEntity.getEyeLocation());
     }
 
     @Override
     public Collection<Collider> getColliders() {
         return streams.stream()
-                .map(ParticleStream::getCollider)
+                .map(SweepStream::getCollider)
                 .collect(Collectors.toList());
     }
 
@@ -177,32 +168,40 @@ public class AirSweep implements Ability {
         return streams.isEmpty() ? AbilityCollisionResult.DESTROY_INSTANCE : AbilityCollisionResult.NONE;
     }
 
-    private class SweepStream extends ParticleStream {
-        public SweepStream(AbilityUser user, Vector3d origin, Vector3d direction, double range, double speed, double entityCollisionRadius, double abilityCollisionRadius, double damage) {
-            super(user, origin.toLocation(world), direction, range, speed, entityCollisionRadius, abilityCollisionRadius, 0.1, damage);
+    private class SweepStream {
+        private final AirSweep ability;
+        private ImmutableVector location;
+        private final ImmutableVector direction;
+        private final RemovalConditional removal;
+        @Getter
+        private Collider collider;
+
+        SweepStream(AirSweep ability, ImmutableVector original, ImmutableVector direction) {
+            this.ability = ability;
+            this.location = original;
+            this.direction = direction;
+            this.removal = new RemovalConditional.Builder()
+                    .canUse(() -> location.toLocation(world))
+                    .range(() -> original.toLocation(world), () -> location.toLocation(world), range)
+                    .build();
         }
 
-        @Override
-        public void render() {
-            AirElement.display(location, 1, 0, 0, 0);
-        }
+        UpdateResult update() {
+            location = location.add(direction.multiply(speed));
+            if (removal.shouldRemove(user, ability)) return UpdateResult.REMOVE;
+            AirElement.display(location.toLocation(world), 1, 0.0f, 0.0f, 0.0f, 0.0f);
+            this.collider = new SphereCollider(world, location, 1);
+            if (this.collider.handleEntityCollision(livingEntity, true, entity -> {
+                if (user.canUse(entity.getLocation()) && !affected.contains(entity)) {
+                    AbilityTargetLiving target = AbilityTarget.of((LivingEntity) entity);
+                    target.damage(damage, ability);
+                    target.setVelocity(direction.multiply(knockback), ability);
 
-        @Override
-        public boolean onEntityHit(Entity entity) {
-            if (!user.canUse(entity.getLocation())) {
-                return false;
-            }
-
-            if (affected.contains(entity)) {
-                return true;
-            }
-
-            ((LivingEntity) entity).damage(damage, livingEntity);
-            entity.setVelocity(direction.multiply(knockback).toBukkitVector());
-
-            affected.add(entity);
-
-            return true;
+                    affected.add(entity);
+                }
+                return CollisionCallbackResult.CONTINUE;
+            })) return UpdateResult.REMOVE;
+            return new SphereCollider(world, this.location, 0.1).handleBlockCollisions(false) ? UpdateResult.REMOVE : UpdateResult.CONTINUE;
         }
     }
 }

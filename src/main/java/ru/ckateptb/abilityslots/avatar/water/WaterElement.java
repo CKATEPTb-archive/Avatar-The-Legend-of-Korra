@@ -16,10 +16,6 @@ import ru.ckateptb.abilityslots.common.util.MaterialUtils;
 @Getter
 @Setter
 public class WaterElement extends AbstractAbilityCategory {
-    private final String name = "Water";
-    private String displayName = "§1Water";
-    private String prefix = "§1";
-
     public static final MaterialSetTag PLANT_BENDABLE;
     public static final MaterialSetTag ICE_BENDABLE;
     public static final MaterialSetTag SNOW_BENDABLE;
@@ -57,6 +53,11 @@ public class WaterElement extends AbstractAbilityCategory {
                 .add(SNOW_BENDABLE.getValues())
                 .add(Material.WATER).ensureSize("Waterbendable", 58);
     }
+
+    private final String name = "Water";
+    private String displayName = "§1Water";
+    private String prefix = "§1";
+
     public static boolean isWaterBendable(@NonNull Block block) {
         return MaterialUtils.isWater(block) || ALL.isTagged(block);
     }

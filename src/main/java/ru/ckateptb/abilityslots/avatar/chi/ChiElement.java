@@ -10,7 +10,7 @@ import ru.ckateptb.tablecloth.config.ConfigField;
 public class ChiElement extends AbstractAbilityCategory {
     @ConfigField
     @Getter
-    private static double hitActivationRange = 4;
+    private static double hitActivationRange = 6;
     private final String name = "Chi";
     private String displayName = "§5Chi";
     private String prefix = "§5";

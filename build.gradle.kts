@@ -23,28 +23,29 @@ java {
 
 repositories {
     mavenCentral()
-    maven {
-        url = uri("https://maven.pkg.github.com/CKATEPTb/Tablecloth")
-        credentials {
-            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
-    maven {
-        url = uri("https://maven.pkg.github.com/CKATEPTb/AbilitySlots")
-        credentials {
-            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
+    mavenLocal()
+//    maven {
+//        url = uri("https://maven.pkg.github.com/CKATEPTb/Tablecloth")
+//        credentials {
+//            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+//            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+//        }
+//    }
+//    maven {
+//        url = uri("https://maven.pkg.github.com/CKATEPTb/AbilitySlots")
+//        credentials {
+//            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+//            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+//        }
+//    }
 }
 
 dependencies {
     compileOnly("org.projectlombok:lombok:1.18.22")
     annotationProcessor("org.projectlombok:lombok:1.18.22")
     paperDevBundle("1.17.1-R0.1-SNAPSHOT")
-    compileOnly("ru.ckateptb:tablecloth:1.0.2-SNAPSHOT")
-    compileOnly("ru.ckateptb:abilityslots:1.0.6-SNAPSHOT")
+    compileOnly("ru.ckateptb:tablecloth:+")
+    compileOnly("ru.ckateptb:abilityslots:+")
 }
 
 tasks {
@@ -74,41 +75,41 @@ publishing {
                 }
                 artifact(tasks["sourcesJar"])
             }
-            pom {
-                name.set(project.name)
-                url.set("https://github.com/${githubOwner}/${githubName}")
-                licenses {
-                    license {
-                        name.set("The GNU Affero General Public License, Version 3.0")
-                        url.set("https://www.gnu.org/licenses/agpl-3.0.txt")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:https://github.com/${githubOwner}/${githubName}.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/${githubOwner}/${githubName}.git")
-                    url.set("https://github.com/${githubOwner}/${githubName}")
-                }
-                issueManagement {
-                    system.set("Github")
-                    url.set("https://github.com/${githubOwner}/${githubName}/issues")
-                }
-            }
+//            pom {
+//                name.set(project.name)
+//                url.set("https://github.com/${githubOwner}/${githubName}")
+//                licenses {
+//                    license {
+//                        name.set("The GNU Affero General Public License, Version 3.0")
+//                        url.set("https://www.gnu.org/licenses/agpl-3.0.txt")
+//                    }
+//                }
+//                scm {
+//                    connection.set("scm:git:https://github.com/${githubOwner}/${githubName}.git")
+//                    developerConnection.set("scm:git:ssh://git@github.com/${githubOwner}/${githubName}.git")
+//                    url.set("https://github.com/${githubOwner}/${githubName}")
+//                }
+//                issueManagement {
+//                    system.set("Github")
+//                    url.set("https://github.com/${githubOwner}/${githubName}/issues")
+//                }
+//            }
         }
-        repositories {
-            maven {
-                name = githubName
-                url = uri("https://maven.pkg.github.com/${githubOwner}/${githubName}")
-                credentials {
-                    username = System.getenv("GITHUB_ACTOR")
-                    password = System.getenv("GITHUB_TOKEN")
-                }
-            }
-        }
+//        repositories {
+//            maven {
+//                name = githubName
+//                url = uri("https://maven.pkg.github.com/${githubOwner}/${githubName}")
+//                credentials {
+//                    username = System.getenv("GITHUB_ACTOR")
+//                    password = System.getenv("GITHUB_TOKEN")
+//                }
+//            }
+//        }
     }
 }
 
 signing {
-    sign(publishing.publications["maven"])
+//    sign(publishing.publications["maven"])
 }
 
 fun isSnapshot() = project.version.toString().endsWith("-SNAPSHOT")

@@ -26,15 +26,11 @@ import ru.ckateptb.abilityslots.user.AbilityUser;
         instruction = "Passive Ability",
         canBindToSlot = false
 )
-public class Tremorsense implements Ability {
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
+public class Tremorsense extends Ability {
     private Location location;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
+    public ActivateResult activate(ActivationMethod method) {
         return ActivateResult.ACTIVATE;
     }
 
@@ -48,7 +44,7 @@ public class Tremorsense implements Ability {
                     player.sendBlockChange(this.location, this.location.getBlock().getBlockData());
                     this.location = null;
                 }
-                if (EarthElement.isEarthBendable(user, block)) {
+                if (EarthElement.isEarthNotLava(user, block)) {
                     player.sendBlockChange(location, Material.GLOWSTONE.createBlockData());
                     this.location = location;
                 }
@@ -60,11 +56,5 @@ public class Tremorsense implements Ability {
     @Override
     public void destroy() {
 
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
     }
 }

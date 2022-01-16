@@ -4,23 +4,21 @@ import lombok.Getter;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.avatar.earth.EarthElement;
-import ru.ckateptb.abilityslots.particle.ParticleEffect;
-import ru.ckateptb.abilityslots.user.AbilityUser;
-import ru.ckateptb.tablecloth.collision.collider.AABB;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
+import ru.ckateptb.tablecloth.particle.Particle;
 import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
-import ru.ckateptb.tablecloth.util.CollisionUtils;
 
 @Getter
 @AbilityInfo(
@@ -33,7 +31,7 @@ import ru.ckateptb.tablecloth.util.CollisionUtils;
         instruction = "Example Instruction",
         cooldown = 3000
 )
-public class Catapult implements Ability {
+public class Catapult extends Ability {
     @ConfigField
     private static int angle = 80;
     @ConfigField
@@ -49,10 +47,6 @@ public class Catapult implements Ability {
     @ConfigField
     private static int raiseHeight = 1;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-    private World world;
-
     private boolean launched;
     private Block original;
     private long startTime;
@@ -60,8 +54,7 @@ public class Catapult implements Ability {
     private ActivationMethod method;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
+    public ActivateResult activate(ActivationMethod method) {
         this.launched = false;
         this.method = method;
         this.startTime = System.currentTimeMillis();
@@ -86,7 +79,7 @@ public class Catapult implements Ability {
                         this.original = this.user.getLocation().toBlock(world).getRelative(BlockFace.DOWN);
                         Location location = this.original.getLocation();
                         EarthElement.play(location);
-                        ParticleEffect.BLOCK_CRACK.display(location, 100, (float) Math.random(), (float) Math.random(), (float) Math.random(), 0.1, this.original.getBlockData());
+                        Particle.BLOCK_CRACK.display(location, 100, (float) Math.random(), (float) Math.random(), (float) Math.random(), 0.1, this.original.getBlockData());
                         world.playEffect(location, Effect.GHAST_SHOOT, 0, 10);
                     }
                     return UpdateResult.CONTINUE;
@@ -104,20 +97,20 @@ public class Catapult implements Ability {
                 }
             }
 
-            Vector3d direction = user.getDirection();
+            ImmutableVector direction = user.getDirection();
 
-            if (Vector3d.PLUS_J.angle(direction) > Math.toRadians(angle)) {
-                direction = Vector3d.PLUS_J;
+            if (ImmutableVector.PLUS_J.angle(direction) > Math.toRadians(angle)) {
+                direction = ImmutableVector.PLUS_J;
             }
-            Vector3d location = user.getLocation();
-            Vector3d target = location.add(direction.multiply(power));
-            Vector3d force = target.subtract(location);
+            ImmutableVector location = user.getLocation();
+            ImmutableVector target = location.add(direction.multiply(power));
+            ImmutableVector force = target.subtract(location);
             EarthElement.play(this.original.getLocation());
-            AABB collider = AABB.BLOCK_BOUNDS.at(location);
-            CollisionUtils.handleEntityCollisions(livingEntity, collider, (entity) -> {
-                entity.setVelocity(force.toBukkitVector());
-                return false;
-            }, true, true);
+            AxisAlignedBoundingBoxCollider collider = new AxisAlignedBoundingBoxCollider(world, ImmutableVector.ZERO, ImmutableVector.ONE).at(location);
+            collider.handleEntityCollision(livingEntity, true, true, (entity) -> {
+                AbilityTarget.of(entity).setVelocity(force, this);
+                return CollisionCallbackResult.CONTINUE;
+            });
             user.setCooldown(this);
             launched = true;
             this.startTime = System.currentTimeMillis();
@@ -165,12 +158,5 @@ public class Catapult implements Ability {
     @Override
     public void destroy() {
 
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
-        this.world = livingEntity.getWorld();
     }
 }

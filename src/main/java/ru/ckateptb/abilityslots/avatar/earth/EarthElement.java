@@ -20,18 +20,14 @@ import ru.ckateptb.tablecloth.spring.SpringContext;
 @Getter
 @Setter
 public class EarthElement extends AbstractAbilityCategory {
-    @ConfigField
-    @Getter
-    private static long revertTime = 60000;
-    private final String name = "Earth";
-    private String displayName = "§2Earth";
-    private String prefix = "§2";
-
     public static final MaterialSetTag EARTH_BENDABLE;
     public static final MaterialSetTag SAND_BENDABLE;
     public static final MaterialSetTag METAL_BENDABLE;
     public static final MaterialSetTag LAVA_BENDABLE;
     public static final MaterialSetTag ALL;
+    @ConfigField
+    @Getter
+    private static long revertTime = 60000;
 
     static {
         NamespacedKey key = PersistentDataLayer.getInstance().NSK_MATERIAL;
@@ -75,6 +71,10 @@ public class EarthElement extends AbstractAbilityCategory {
                 .ensureSize("All", 134);
     }
 
+    private final String name = "Earth";
+    private String displayName = "§2Earth";
+    private String prefix = "§2";
+
     public static void play(Location location) {
         Block block = location.getBlock();
         if (isMetalBendable(block)) {
@@ -110,14 +110,6 @@ public class EarthElement extends AbstractAbilityCategory {
 
     private static void playSound(Location location, Sound sound, double volume, double pitch) {
         location.getWorld().playSound(location, sound, (float) volume, (float) pitch);
-    }
-
-
-    public enum Type {
-        EARTH,
-        SAND,
-        METAL,
-        LAVA
     }
 
     public static boolean isEarthBendable(@NonNull AbilityUser user, @NonNull Block block) {
@@ -172,5 +164,12 @@ public class EarthElement extends AbstractAbilityCategory {
     private static boolean isSandBender(AbilityUser user) {
         AbilityInstanceService abilityInstanceService = SpringContext.getInstance().getBean(AbilityInstanceService.class);
         return abilityInstanceService.hasAbility(user, SandBender.class);
+    }
+
+    public enum Type {
+        EARTH,
+        SAND,
+        METAL,
+        LAVA
     }
 }

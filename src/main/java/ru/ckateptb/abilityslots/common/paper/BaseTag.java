@@ -6,11 +6,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -25,7 +21,7 @@ public abstract class BaseTag<T extends Keyed, C extends BaseTag<T, C>> implemen
         add(filter);
     }
 
-    public BaseTag(@NotNull Class<T> clazz, @NotNull NamespacedKey key, @NotNull T...values) {
+    public BaseTag(@NotNull Class<T> clazz, @NotNull NamespacedKey key, @NotNull T... values) {
         this(clazz, key, Lists.newArrayList(values));
     }
 
@@ -63,7 +59,7 @@ public abstract class BaseTag<T extends Keyed, C extends BaseTag<T, C>> implemen
     }
 
     @NotNull
-    public C add(@NotNull Tag<T>...tags) {
+    public C add(@NotNull Tag<T>... tags) {
         for (Tag<T> tag : tags) {
             add(tag.getValues());
         }
@@ -71,7 +67,7 @@ public abstract class BaseTag<T extends Keyed, C extends BaseTag<T, C>> implemen
     }
 
     @NotNull
-    public C add(@NotNull T...values) {
+    public C add(@NotNull T... values) {
         this.tagged.addAll(Lists.newArrayList(values));
         return (C) this;
     }
@@ -103,7 +99,7 @@ public abstract class BaseTag<T extends Keyed, C extends BaseTag<T, C>> implemen
     }
 
     @NotNull
-    public C not(@NotNull Tag<T>...tags) {
+    public C not(@NotNull Tag<T>... tags) {
         for (Tag<T> tag : tags) {
             not(tag.getValues());
         }
@@ -111,7 +107,7 @@ public abstract class BaseTag<T extends Keyed, C extends BaseTag<T, C>> implemen
     }
 
     @NotNull
-    public C not(@NotNull T...values) {
+    public C not(@NotNull T... values) {
         this.tagged.removeAll(Lists.newArrayList(values));
         return (C) this;
     }

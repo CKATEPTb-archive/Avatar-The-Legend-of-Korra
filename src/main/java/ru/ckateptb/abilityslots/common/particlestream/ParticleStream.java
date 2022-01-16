@@ -6,14 +6,14 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
-import ru.ckateptb.tablecloth.collision.collider.Sphere;
-import ru.ckateptb.tablecloth.math.Vector3d;
-import ru.ckateptb.tablecloth.util.CollisionUtils;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 public abstract class ParticleStream {
     protected Location origin;
     protected Location location;
-    protected Vector3d direction;
+    protected ImmutableVector direction;
     protected double range;
     protected double speed;
     protected double entityCollisionRadius;
@@ -22,23 +22,23 @@ public abstract class ParticleStream {
     protected double damage;
     protected boolean ignoreLiquids;
     protected Collider collider;
-    private AbilityUser user;
-    private LivingEntity entity;
-    private World world;
+    private final AbilityUser user;
+    private final LivingEntity entity;
+    private final World world;
 
-    public ParticleStream(AbilityUser user, Location origin, Vector3d direction,
+    public ParticleStream(AbilityUser user, Location origin, ImmutableVector direction,
                           double range, double speed, double entityCollisionRadius, double abilityCollisionRadius,
                           double damage, boolean ignoreLiquids) {
         this(user, origin, direction, range, speed, entityCollisionRadius, abilityCollisionRadius, 0.1, damage, ignoreLiquids);
     }
 
-    public ParticleStream(AbilityUser user, Location origin, Vector3d direction,
+    public ParticleStream(AbilityUser user, Location origin, ImmutableVector direction,
                           double range, double speed, double entityCollisionRadius, double abilityCollisionRadius, double blockCollisionRadius,
                           double damage) {
         this(user, origin, direction, range, speed, entityCollisionRadius, abilityCollisionRadius, blockCollisionRadius, damage, true);
     }
 
-    public ParticleStream(AbilityUser user, Location origin, Vector3d direction,
+    public ParticleStream(AbilityUser user, Location origin, ImmutableVector direction,
                           double range, double speed, double entityCollisionRadius, double abilityCollisionRadius, double blockCollisionRadius,
                           double damage, boolean ignoreLiquids) {
         this.user = user;
@@ -55,45 +55,41 @@ public abstract class ParticleStream {
         this.damage = damage;
         this.ignoreLiquids = ignoreLiquids;
 
-        this.collider = new Sphere(new Vector3d(location), abilityCollisionRadius);
+        this.collider = new SphereCollider(world, new ImmutableVector(location), abilityCollisionRadius);
     }
 
     // Return false to destroy this stream
     public boolean update() {
         Location previous = location.clone();
-        location.add(direction.multiply(speed).toBukkitVector());
+        location.add(direction.multiply(speed));
 
         if (!user.canUse(location)) {
             return false;
         }
 
-        Sphere blockCollider = new Sphere(new Vector3d(location), blockCollisionRadius);
-        if(CollisionUtils.handleBlockCollisions(this.entity, blockCollider, o -> false, block -> !block.isPassable() || block.isLiquid(), ignoreLiquids).size() > 0) {
+        SphereCollider blockCollider = new SphereCollider(world, new ImmutableVector(location), blockCollisionRadius);
+        if (blockCollider.handleBlockCollisions(true, false, block -> CollisionCallbackResult.END, block -> true)) {
             return false;
         }
 
         render();
 
-        this.collider = new Sphere(new Vector3d(location), abilityCollisionRadius);
+        this.collider = new SphereCollider(world, new ImmutableVector(location), abilityCollisionRadius);
 
-        Sphere entityCollider = new Sphere(new Vector3d(location), entityCollisionRadius);
-        boolean hit = CollisionUtils.handleEntityCollisions(this.entity, entityCollider, this::onEntityHit, true);
+        SphereCollider entityCollider = new SphereCollider(world, new ImmutableVector(location), entityCollisionRadius);
+        boolean hit = entityCollider.handleEntityCollision(this.entity, this::onEntityHit);
 
-        if (hit || location.distance(origin) > range) {
-            return false;
-        }
-
-        return true;
+        return !hit && !(location.distance(origin) > range);
     }
 
     public abstract void render();
 
-    public boolean onEntityHit(Entity entity) {
+    public CollisionCallbackResult onEntityHit(Entity entity) {
         if (!user.canUse(entity.getLocation())) {
-            return false;
+            return CollisionCallbackResult.CONTINUE;
         }
         ((LivingEntity) entity).damage(damage, this.entity);
-        return true;
+        return CollisionCallbackResult.END;
     }
 
     public Location getLocation() {

@@ -10,13 +10,11 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import ru.ckateptb.abilityslots.AbilitySlots;
 
 public class PersistentDataLayer {
+    public static final String STR_ARMOR = "abilityslots-armor";
+    public static final String STR_MATERIAL = "abilityslots-material";
     @Getter
     private static final PersistentDataLayer instance = new PersistentDataLayer(AbilitySlots.getInstance());
     private static final byte VALUE = (byte) 0x1;
-
-    public static final String STR_ARMOR = "abilityslots-armor";
-    public static final String STR_MATERIAL = "abilityslots-material";
-
     public final NamespacedKey NSK_ARMOR;
     public final NamespacedKey NSK_MATERIAL;
 

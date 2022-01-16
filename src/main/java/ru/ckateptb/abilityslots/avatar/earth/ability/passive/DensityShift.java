@@ -15,6 +15,8 @@ import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.avatar.earth.EarthElement;
 import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
 import ru.ckateptb.tablecloth.util.WorldUtils;
@@ -33,18 +35,14 @@ import java.util.function.Predicate;
         instruction = "Passive Ability",
         canBindToSlot = false
 )
-public class DensityShift implements Ability {
+public class DensityShift extends Ability {
     @ConfigField
     private static long duration = 6000;
     @ConfigField
     private static double radius = 2.0;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
+    public ActivateResult activate(ActivationMethod method) {
         if (method == ActivationMethod.FALL && getAbilityInstanceService().hasAbility(user, getClass())) {
             return shouldPrevent() ? ActivateResult.NOT_ACTIVATE_AND_CANCEL_EVENT : ActivateResult.NOT_ACTIVATE;
         }
@@ -57,9 +55,10 @@ public class DensityShift implements Ability {
         Location center = block.getLocation().toCenterLocation();
         Predicate<Block> predicate = b -> EarthElement.isEarthBendable(user, b) && b.getRelative(BlockFace.UP).isPassable();
         if (predicate.test(block)) {
-            for (Block b : WorldUtils.getNearbyBlocks(center, radius, predicate)) {
+            new SphereCollider(center.getWorld(), center.toVector(), radius).handleBlockCollisions(b -> {
                 new TemporaryBlock(b.getLocation(), getSoftType(b.getBlockData()), duration);
-            }
+                return CollisionCallbackResult.CONTINUE;
+            }, predicate);
             return true;
         }
         return false;
@@ -93,11 +92,5 @@ public class DensityShift implements Ability {
 
     @Override
     public void destroy() {
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
     }
 }

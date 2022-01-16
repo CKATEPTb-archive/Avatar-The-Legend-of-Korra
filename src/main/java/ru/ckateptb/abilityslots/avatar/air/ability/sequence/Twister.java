@@ -1,19 +1,15 @@
 package ru.ckateptb.abilityslots.avatar.air.ability.sequence;
 
 import lombok.Getter;
-import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.SequenceAction;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.ability.sequence.AbilityAction;
 import ru.ckateptb.abilityslots.ability.sequence.Sequence;
@@ -21,23 +17,22 @@ import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.avatar.air.ability.AirBlast;
 import ru.ckateptb.abilityslots.avatar.air.ability.AirShield;
 import ru.ckateptb.abilityslots.avatar.air.ability.Tornado;
-import ru.ckateptb.abilityslots.service.AbilityInstanceService;
-import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.abilityslots.common.util.MaterialUtils;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.tablecloth.collision.Collider;
-import ru.ckateptb.tablecloth.collision.RayTrace;
-import ru.ckateptb.tablecloth.collision.collider.AABB;
-import ru.ckateptb.tablecloth.collision.collider.Disc;
-import ru.ckateptb.tablecloth.collision.collider.OBB;
-import ru.ckateptb.tablecloth.collision.collider.Sphere;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
+import ru.ckateptb.tablecloth.collision.collider.DiskCollider;
+import ru.ckateptb.tablecloth.collision.collider.OrientedBoundingBoxCollider;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
-import ru.ckateptb.tablecloth.util.CollisionUtils;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 @AbilityInfo(
@@ -47,8 +42,9 @@ import java.util.concurrent.ThreadLocalRandom;
         activationMethods = {ActivationMethod.SEQUENCE},
         category = "air",
         description = "Create a cyclone of air that travels along the ground grabbing nearby entities.",
-        instruction = "AirShield (Tap Shift) > Tornado (Hold Shift) > AirBlast (Left Click)",
+        instruction = "AirShield \\(Tap Shift\\) > Tornado \\(Hold Shift\\) > AirBlast \\(Left Click\\)",
         cooldown = 4000,
+        cost = 20,
         canBindToSlot = false
 )
 @Sequence({
@@ -58,7 +54,7 @@ import java.util.concurrent.ThreadLocalRandom;
         @AbilityAction(ability = AirBlast.class, action = SequenceAction.LEFT_CLICK)
 })
 @CollisionParticipant
-public class Twister implements Ability {
+public class Twister extends Ability {
     @ConfigField
     private static long duration = 8000;
     @ConfigField
@@ -78,96 +74,72 @@ public class Twister implements Ability {
     @ConfigField
     private static int particlesPerStream = 7;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
-    private World world;
     private long startTime;
-    private Vector3d base;
-    private Vector3d direction;
-    private Vector3d origin;
+    private ImmutableVector base;
+    private ImmutableVector direction;
+    private ImmutableVector origin;
     private double currentHeight;
+    private RemovalConditional removal;
     private final List<Collider> colliders = new ArrayList<>();
     private final Set<Entity> affected = new HashSet<>();
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
-
-        AbilityInstanceService instanceService = getAbilityInstanceService();
-        for (AirBlast blast : instanceService.getAbilityUserInstances(user, AirBlast.class)) {
-            instanceService.destroyInstance(user, blast);
-        }
-
-        this.world = livingEntity.getWorld();
+    public ActivateResult activate(ActivationMethod method) {
+        getAbilityInstanceService().destroyInstanceType(user, AirBlast.class);
         this.startTime = System.currentTimeMillis();
-        this.direction = new Vector3d(livingEntity.getEyeLocation().getDirection()).setY(0).normalize(Vector3d.PLUS_I);
-
-        this.base = new Vector3d(livingEntity.getLocation()).add(direction.multiply(2));
-        this.base = RayTrace.of(base.add(new Vector3d(0, 3.5, 0)), Vector3d.MINUS_J).range(7).ignoreLiquids(false).result(world).position();
-
-        if (!isAcceptableBase()) {
+        this.direction = user.getDirection().setY(0).normalize();
+        this.base = user.getLocation().add(direction.multiply(2));
+        this.currentHeight = height;
+        Block ground = this.base.add(0, currentHeight / 2, 0).getFirstRelativeBlock(world, BlockFace.DOWN, currentHeight);
+        if (!isAcceptableBase(ground) || !user.removeEnergy(this)) {
             return ActivateResult.NOT_ACTIVATE;
         }
-
+        this.base = base.setY(ground.getY());
         this.origin = base;
-        this.currentHeight = height;
-
-        user.setCooldown(this);
+        this.user.setCooldown(this);
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .canUse(() -> base.toLocation(world))
+                .custom((user, ability) -> !isAcceptableBase(base.toBlock(world)))
+                .build();
         return ActivateResult.ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
-        if (base.distance(origin) > range) {
-            if (System.currentTimeMillis() > startTime + duration)
-                return UpdateResult.REMOVE;
-        } else {
-            base = base.add(direction.multiply(speed));
-            base = RayTrace.of(base.add(new Vector3d(0, 3.5, 0)), Vector3d.MINUS_J).range(currentHeight).ignoreLiquids(false).result(world).position();
-        }
-        if (!isAcceptableBase()) {
-            return UpdateResult.REMOVE;
-        }
-
-
-        if (!user.canUse(base.toLocation(world))) {
-            return UpdateResult.REMOVE;
-        }
-
-        Vector3d top = RayTrace.of(base, Vector3d.PLUS_J).range(currentHeight).ignoreLiquids(false).result(world).position();
-
-        currentHeight = top.getY() - base.getY();
-        if (currentHeight <= 0) {
-            return UpdateResult.REMOVE;
-        }
-
-        render();
-
+        if (removal.shouldRemove(user, this)) return UpdateResult.REMOVE;
+        Block top = this.base.add(0, 1, 0).getFirstRelativeBlock(world, BlockFace.UP, currentHeight);
+        currentHeight = top.getY() - (base.getY() + 1);
+        if (currentHeight < height / 2) return UpdateResult.REMOVE;
         colliders.clear();
         for (int i = 0; i < currentHeight - 1; ++i) {
-            Vector3d location = base.add(new Vector3d(0, i, 0));
+            ImmutableVector location = base.add(0, i, 0);
             double r = proximity + radius * (i / currentHeight);
-            AABB aabb = new AABB(new Vector3d(-r, 0, -r), new Vector3d(r, 1, r)).at(location);
-
-            colliders.add(new Disc(new OBB(aabb), new Sphere(location, r)));
+            AxisAlignedBoundingBoxCollider aabb = new AxisAlignedBoundingBoxCollider(world, new ImmutableVector(-r, 0, -r), new ImmutableVector(r, 1, r));
+            colliders.add(new DiskCollider(world, new OrientedBoundingBoxCollider(aabb), new SphereCollider(world, location, r)).at(location));
         }
-
         for (Collider collider : colliders) {
-            CollisionUtils.handleEntityCollisions(livingEntity, collider, (entity) -> {
+            collider.handleEntityCollision(livingEntity, false, entity -> {
                 if (user.canUse(entity.getLocation())) {
                     affected.add(entity);
                 }
-                return false;
-            }, false);
+                return CollisionCallbackResult.CONTINUE;
+            });
         }
-
         for (Entity entity : affected) {
-            Vector3d forceDirection = new Vector3d(base.toLocation(world).add(0, currentHeight, 0).subtract(entity.getLocation())).normalize();
-            Vector3d force = forceDirection.multiply(speed);
-            entity.setVelocity(force.toBukkitVector());
+            AbilityTarget target = AbilityTarget.of(entity);
+            target.setVelocity(base.add(0, currentHeight, 0).subtract(target.getLocation()).normalize().multiply(speed), this);
         }
-
+        render();
+        if(base.distance(origin) < range) {
+            this.base = base.add(direction.multiply(speed));
+            Block ground = this.base.add(0, currentHeight / 2, 0).getFirstRelativeBlock(world, BlockFace.DOWN, currentHeight);
+            this.base = base.setY(ground.getY());
+        } else if (System.currentTimeMillis() > startTime + duration) {
+                return UpdateResult.REMOVE;
+        }
         return UpdateResult.CONTINUE;
     }
 
@@ -179,12 +151,6 @@ public class Twister implements Ability {
     @Override
     public List<Collider> getColliders() {
         return colliders;
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
     }
 
     private void render() {
@@ -208,21 +174,13 @@ public class Twister implements Ability {
                     continue;
                 }
 
-                Location current = base.toLocation(world).add(x, y, z);
-                AirElement.display(current, 1, 0.0f, 0.0f, 0.0f, 0.0f, ThreadLocalRandom.current().nextInt(20) == 0);
+                AirElement.display(base.toLocation(world).add(x, y, z), 1, 0.0f, 0.0f, 0.0f, false);
             }
         }
+        AirElement.sound(base.toLocation(world));
     }
 
-    private boolean isAcceptableBase() {
-        Block block = base.toBlock(world);
-        // Remove if base couldn't be resolved to a non-solid block.
-        if (AABB.from(block).contains(base)) {
-            return false;
-        }
-
-        Block below = block.getRelative(BlockFace.DOWN);
-        // Remove if base was resolved to being above a non-solid block.
-        return AABB.from(below).max != null || below.isLiquid();
+    private boolean isAcceptableBase(Block block) {
+        return !(MaterialUtils.isTransparent(block) && MaterialUtils.isTransparent(block.getRelative(BlockFace.DOWN)));
     }
 }

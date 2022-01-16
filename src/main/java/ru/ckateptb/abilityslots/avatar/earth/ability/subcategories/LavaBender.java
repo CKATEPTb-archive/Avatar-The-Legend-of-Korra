@@ -9,8 +9,6 @@ import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 
-@Getter
-@Setter
 @AbilityInfo(
         author = "CKATEPTb",
         name = "LavaBender",
@@ -21,11 +19,9 @@ import ru.ckateptb.abilityslots.user.AbilityUser;
         instruction = "Passive Ability",
         canBindToSlot = false
 )
-public class LavaBender implements Ability {
-    private AbilityUser user;
-
+public class LavaBender extends Ability {
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
+    public ActivateResult activate(ActivationMethod method) {
         return ActivateResult.ACTIVATE;
     }
 

@@ -1,31 +1,30 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
-import org.bukkit.Location;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
-import ru.ckateptb.abilityslots.ability.enums.AbilityCollisionResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
 import ru.ckateptb.abilityslots.common.util.VectorUtils;
-import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
-import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.entity.AbilityTargetLiving;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.tablecloth.collision.Collider;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
+import ru.ckateptb.tablecloth.collision.collider.DiskCollider;
+import ru.ckateptb.tablecloth.collision.collider.OrientedBoundingBoxCollider;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 @Getter
 @AbilityInfo(
@@ -36,100 +35,89 @@ import java.util.stream.Collectors;
         category = "air",
         description = "Gathers air into an improvised blade that slices through the air in front of you, damaging your targets",
         instruction = "Left Click",
-        cooldown = 3500
+        cooldown = 3500,
+        cost = 10
 )
 @CollisionParticipant
-public class AirBlade implements Ability {
+public class AirBlade extends Ability {
     @ConfigField
     private static double damage = 4;
     @ConfigField
     private static double range = 20;
     @ConfigField
-    private static double radius = 3;
+    private static double maxRadius = 3;
+    @ConfigField
+    private static double minRadius = 0.3;
     @ConfigField
     private static double speed = 1.3;
-    @ConfigField
-    private static double step = 0.6;
 
-    private AbilityUser user;
-    private LivingEntity entity;
-    private final CompositeRemovalPolicy removalPolicy = new CompositeRemovalPolicy();
-    private final List<Entity> affected = new ArrayList<>();
-    private final List<BladeStream> streams = new ArrayList<>();
+    private double angle;
+    private double currentRadius;
+    private ImmutableVector original;
+    private ImmutableVector location;
+    private ImmutableVector direction;
+    private RemovalConditional removal;
+    private Collider collider;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod activationMethod) {
-        this.setUser(user);
-        this.removalPolicy.addPolicy(
-                new IsDeadRemovalPolicy(user)
-        );
-        Location eyeLocation = entity.getEyeLocation().add(0, -radius, 0);
-        Vector3d direction = new Vector3d(eyeLocation.getDirection());
-        Vector3d rotateAxis = Vector3d.PLUS_J.cross(direction);
-        for (double d = -radius; d < radius; d += step) {
-            double finalD = d;
-            VectorUtils.rotate(direction, rotateAxis, 360, 1).forEach(vector3d -> {
-                Location location = eyeLocation.clone().add(vector3d.normalize().multiply(finalD).toBukkitVector());
-                streams.add(new BladeStream(user, location, direction, range, speed, 0.5, 0.5, damage));
-            });
-        }
+    public ActivateResult activate(ActivationMethod method) {
+        this.currentRadius = maxRadius;
+        this.original = user.getEyeLocation();
+        this.direction = user.getDirection();
+        this.location = original.add(direction.multiply(currentRadius));
+        if (!user.canUse(this.location.toLocation(world)) || !user.removeEnergy(this))
+            return ActivateResult.NOT_ACTIVATE;
+        this.angle = Math.toRadians(livingEntity.getEyeLocation().getYaw());
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .range(() -> this.original.toLocation(world), () -> this.location.toLocation(world), range)
+                .custom((user, ability) -> currentRadius < minRadius)
+                .build();
         user.setCooldown(this);
-
         return ActivateResult.ACTIVATE;
+    }
+
+    public DiskCollider getCollider() {
+        AxisAlignedBoundingBoxCollider bounds = new AxisAlignedBoundingBoxCollider(world, new ImmutableVector(-0.15, -currentRadius, -currentRadius), new ImmutableVector(0.15, currentRadius, currentRadius));
+        OrientedBoundingBoxCollider obb = new OrientedBoundingBoxCollider(bounds, ImmutableVector.PLUS_J, angle);
+        return new DiskCollider(world, obb, new SphereCollider(world, currentRadius)).at(location);
     }
 
     @Override
     public UpdateResult update() {
-        if (this.removalPolicy.shouldRemove()) return UpdateResult.REMOVE;
-        streams.removeIf(blade -> !blade.update());
-        return streams.isEmpty() ? UpdateResult.REMOVE : UpdateResult.CONTINUE;
-    }
-
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.entity = user.getEntity();
+        if (removal.shouldRemove(user, this)) return UpdateResult.REMOVE;
+        this.collider = getCollider();
+        if (this.collider.handleEntityCollision(livingEntity, entity -> {
+            if (entity instanceof LivingEntity livingEntity) {
+                AbilityTargetLiving target = AbilityTarget.of(livingEntity);
+                target.damage(damage, this);
+            }
+            return CollisionCallbackResult.END;
+        })) return UpdateResult.REMOVE;
+        while (this.getCollider().handleBlockCollisions(true)) {
+            currentRadius -= 0.1;
+            if (currentRadius < minRadius) break;
+        }
+        CompletableFuture.runAsync(() -> {
+            ImmutableVector rotateAxis = ImmutableVector.PLUS_J.crossProduct(this.direction);
+            VectorUtils.circle(this.direction.multiply(currentRadius), rotateAxis, 40).forEach(v ->
+                    AirElement.display(location.add(v).toLocation(world), 1, 0, 0, 0, false)
+            );
+            AirElement.sound(location.toLocation(world));
+        });
+        this.location = location.add(direction.multiply(speed));
+        return UpdateResult.CONTINUE;
     }
 
     @Override
     public void destroy() {
+
     }
 
     @Override
     public Collection<Collider> getColliders() {
-        return streams.stream().map(ParticleStream::getCollider).collect(Collectors.toList());
-    }
-
-    @Override
-    public AbilityCollisionResult destroyCollider(Ability destroyer, Collider destroyerCollider, Collider destroyedCollider) {
-        streams.removeIf(bladeStream -> bladeStream.getCollider().equals(destroyedCollider));
-        return streams.isEmpty() ? AbilityCollisionResult.DESTROY_INSTANCE : AbilityCollisionResult.NONE;
-    }
-
-    private class BladeStream extends ParticleStream {
-        public BladeStream(AbilityUser user, Location origin, Vector3d direction, double range, double speed, double entityCollisionRadius, double abilityCollisionRadius, double damage) {
-            super(user, origin, direction, range, speed, entityCollisionRadius, abilityCollisionRadius, 0.5, damage);
-        }
-
-        @Override
-        public void render() {
-            AirElement.display(location, 1, 0, 0, 0);
-        }
-
-        @Override
-        public boolean onEntityHit(Entity entity) {
-            if (!user.canUse(entity.getLocation())) {
-                return false;
-            }
-
-            if (affected.contains(entity)) {
-                return true;
-            }
-
-            ((LivingEntity) entity).damage(damage, user.getEntity());
-
-            affected.add(entity);
-
-            return true;
-        }
+        return collider == null ? Collections.emptyList() : Collections.singleton(collider);
     }
 }

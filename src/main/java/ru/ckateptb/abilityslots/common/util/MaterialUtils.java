@@ -19,6 +19,7 @@ import ru.ckateptb.abilityslots.common.paper.PersistentDataLayer;
 
 import java.util.Map;
 import java.util.Objects;
+
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MaterialUtils {
     public static final Map<Material, Material> COOKABLE;
@@ -29,10 +30,6 @@ public class MaterialUtils {
     public static final MaterialSetTag CONTAINERS;
     public static final MaterialSetTag UNBREAKABLES;
     public static final MaterialSetTag METAL_ARMOR;
-
-    private static <K, V> Map.Entry<K, V> entry(K key, V value) {
-        return Map.entry(key, value);
-    }
 
     static {
         COOKABLE = Map.ofEntries(
@@ -116,6 +113,10 @@ public class MaterialUtils {
                 Material.GOLDEN_HELMET, Material.GOLDEN_CHESTPLATE, Material.GOLDEN_LEGGINGS, Material.GOLDEN_BOOTS,
                 Material.CHAINMAIL_HELMET, Material.CHAINMAIL_CHESTPLATE, Material.CHAINMAIL_LEGGINGS, Material.CHAINMAIL_BOOTS
         ).ensureSize("Metal Armor", 12);
+    }
+
+    private static <K, V> Map.Entry<K, V> entry(K key, V value) {
+        return Map.entry(key, value);
     }
 
     public static boolean isAir(Block block) {

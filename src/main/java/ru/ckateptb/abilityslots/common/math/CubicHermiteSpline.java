@@ -1,6 +1,6 @@
 package ru.ckateptb.abilityslots.common.math;
 
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,11 +8,11 @@ import java.util.List;
 // Generates a spline, using cubic hermite curves, from a set of knots.
 // Set tension to 0 to generate a Catmull-Rom spline.
 public class CubicHermiteSpline {
-    private List<Vector3d> knots = new ArrayList<>();
-    private List<CubicHermiteCurve> curves = new ArrayList<>();
+    private final List<ImmutableVector> knots = new ArrayList<>();
+    private final List<CubicHermiteCurve> curves = new ArrayList<>();
     private double length;
     private boolean built;
-    private double tension;
+    private final double tension;
 
     public CubicHermiteSpline() {
         this(0.0);
@@ -22,16 +22,16 @@ public class CubicHermiteSpline {
         this.tension = tension;
     }
 
-    public void addKnot(Vector3d position) {
+    public void addKnot(ImmutableVector position) {
         knots.add(position);
         built = false;
     }
 
-    public List<Vector3d> getKnots() {
+    public List<ImmutableVector> getKnots() {
         return knots;
     }
 
-    public Vector3d interpolate(double t) {
+    public ImmutableVector interpolate(double t) {
         t = Math.max(0.0, Math.min(t, 1.0));
 
         if (!built) {
@@ -53,11 +53,11 @@ public class CubicHermiteSpline {
             tStart += (tEnd - tStart);
         }
 
-        return curves.get(curves.size() - 1).interpolate(1.0);
+        return curves.isEmpty() ? ImmutableVector.ZERO : curves.get(curves.size() - 1).interpolate(1.0);
     }
 
     public void build() {
-        Vector3d startPoint, startTangent, endPoint, endTangent;
+        ImmutableVector startPoint, startTangent, endPoint, endTangent;
 
         length = 0.0;
         curves.clear();

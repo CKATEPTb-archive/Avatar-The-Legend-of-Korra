@@ -1,8 +1,6 @@
 package ru.ckateptb.abilityslots.avatar.air.ability.sequence;
 
 import lombok.Getter;
-import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -12,32 +10,26 @@ import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.SequenceAction;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
+import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.ability.sequence.AbilityAction;
 import ru.ckateptb.abilityslots.ability.sequence.Sequence;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.avatar.air.ability.AirBlast;
 import ru.ckateptb.abilityslots.avatar.air.ability.AirShield;
 import ru.ckateptb.abilityslots.avatar.air.ability.AirSuction;
-import ru.ckateptb.abilityslots.common.util.VectorUtils;
-import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.OutOfRangeRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.SneakingRemovalPolicy;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.abilityslots.service.AbilityInstanceService;
-import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
-import ru.ckateptb.tablecloth.collision.RayTrace;
-import ru.ckateptb.tablecloth.collision.collider.Sphere;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 import ru.ckateptb.tablecloth.spring.SpringContext;
 import ru.ckateptb.tablecloth.temporary.TemporaryService;
 import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
-import ru.ckateptb.tablecloth.util.CollisionUtils;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 @AbilityInfo(
@@ -47,8 +39,9 @@ import java.util.concurrent.ThreadLocalRandom;
         activationMethods = {ActivationMethod.SEQUENCE},
         category = "air",
         description = "Creates a controlled flow of air that you can control and capture all targets in its path",
-        instruction = "AirShield (Hold Sneak) > AirSuction (Left Click) > AirBlast (Left Click)",
+        instruction = "AirShield \\(Hold Sneak\\) > AirSuction \\(Left Click\\) > AirBlast \\(Left Click\\)",
         cooldown = 7000,
+        cost = 20,
         canBindToSlot = false
 )
 @Sequence({
@@ -56,7 +49,8 @@ import java.util.concurrent.ThreadLocalRandom;
         @AbilityAction(ability = AirSuction.class, action = SequenceAction.LEFT_CLICK),
         @AbilityAction(ability = AirBlast.class, action = SequenceAction.LEFT_CLICK)
 })
-public class AirStream implements Ability {
+@CollisionParticipant
+public class AirStream extends Ability {
     @ConfigField
     private static double speed = 0.5;
     @ConfigField
@@ -69,117 +63,117 @@ public class AirStream implements Ability {
     private static double height = 14;
     @ConfigField
     private static int tailCount = 10;
+    @ConfigField
+    private static long energyCostInterval = 1000;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
-    private Vector3d location;
-    private Vector3d origin;
+    private ImmutableVector location;
+    private ImmutableVector origin;
     private final List<TemporaryFlight> flights = new ArrayList<>();
-    private CompositeRemovalPolicy removalPolicy;
-    private Sphere collider;
+    private RemovalConditional removal;
+    private SphereCollider collider;
     private final List<TailData> tail = new ArrayList<>();
     private int tailIndex;
     private final Map<Entity, Long> affected = new HashMap<>();
     private final List<Entity> immune = new ArrayList<>();
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
-
+    public ActivateResult activate(ActivationMethod method) {
         AbilityInstanceService abilityInstanceService = getAbilityInstanceService();
         abilityInstanceService.destroyInstanceType(user, AirBlast.class);
         abilityInstanceService.destroyInstanceType(user, AirSuction.class);
 
-        this.location = new Vector3d(livingEntity.getEyeLocation());
-        World world = livingEntity.getWorld();
+        this.location = user.getEyeLocation();
         this.origin = this.location;
 
-        this.removalPolicy = new CompositeRemovalPolicy(
-                new IsDeadRemovalPolicy(user),
-                new OutOfRangeRemovalPolicy(() -> this.origin.toLocation(world), () -> this.location.toLocation(world), range),
-                new SneakingRemovalPolicy(user, true)
-        );
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .costInterval(energyCostInterval)
+                .sneaking(true)
+                .build();
 
-        this.collider = new Sphere(location, radius);
+        this.collider = new SphereCollider(world, location, radius);
 
         return origin.toBlock(world).isLiquid() ? ActivateResult.NOT_ACTIVATE : ActivateResult.ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
+        if (removal.shouldRemove(user, this)) return UpdateResult.REMOVE;
         long time = System.currentTimeMillis();
 
-        if (removalPolicy.shouldRemove()) {
-            return UpdateResult.REMOVE;
-        }
-
-        Vector3d previous = location;
-        Vector3d direction = getDirection();
+        ImmutableVector previous = location;
+        ImmutableVector direction = getDirection();
         location = location.add(direction.multiply(speed));
         AbilityInstanceService abilityInstanceService = getAbilityInstanceService();
         for (AirBlast blast : abilityInstanceService.getAbilityUserInstances(user, AirBlast.class)) {
-            Location blastLocation = blast.getLocation();
-            if (blastLocation.distance(origin.toLocation(blastLocation.getWorld())) < range)
-                location = new Vector3d(blastLocation);
+            ImmutableVector blastLocation = blast.getLocation();
+            if (blastLocation.distance(origin) < range) {
+                this.location = blastLocation;
+            }
         }
-        collider = new Sphere(location, radius);
-        if (!user.canUse(location.toLocation(livingEntity.getWorld()))) {
-            return UpdateResult.REMOVE;
-        }
-
-        if (CollisionUtils.handleBlockCollisions(livingEntity, new Sphere(location, 0.1), o -> false, block -> !block.isPassable() || block.isLiquid(), false).size() > 0) {
+        collider = new SphereCollider(world, location, radius);
+        if (location.distance(origin) > range || new SphereCollider(world, location, 0.1).handleBlockCollisions(false)) {
             location = previous;
         }
-
         if (location.getY() - origin.getY() > height) {
             location = location.setY(previous.getY());
-//            return UpdateResult.REMOVE;
         }
 
         handleTail(direction);
 
-        CollisionUtils.handleEntityCollisions(livingEntity, collider, (entity) -> {
+        collider.handleBlockCollisions(false, false, block -> {
+            AirElement.handleBlockInteractions(user, block);
+            return CollisionCallbackResult.CONTINUE;
+        }, block -> user.canUse(block.getLocation()));
+
+        collider.handleEntityCollision(livingEntity, false, (entity) -> {
             if (!affected.containsKey(entity) && !immune.contains(entity)) {
                 affected.put(entity, System.currentTimeMillis() + entityDuration);
-
                 if (entity instanceof Player) {
-                    flights.add(new TemporaryFlight((LivingEntity) entity, 20000, true, false, true));
+                    flights.add(new TemporaryFlight((LivingEntity) entity, entityDuration, true, false, true));
                 }
             }
-
-            return false;
-        }, false);
+            return CollisionCallbackResult.CONTINUE;
+        });
 
         for (Iterator<Map.Entry<Entity, Long>> iterator = affected.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<Entity, Long> entry = iterator.next();
             Entity entity = entry.getKey();
+            AbilityTarget target = AbilityTarget.of(entity);
+            ImmutableVector targetLocation = target.getLocation();
             long end = entry.getValue();
-
-            if (time > end) {
+            if (targetLocation.distance(this.location) > 5 || time > end) {
                 if (entity instanceof Player) {
-                    flights.removeIf((flight) -> flight.getLivingEntity().equals(entity));
-//                    new TemporaryFlight(entity, 20000, true, true, false);
+                    flights.removeIf((flight) -> {
+                        if(flight.getLivingEntity().equals(entity)) {
+                            SpringContext.getInstance().getBean(TemporaryService.class).revert(flight);
+                            return true;
+                        }
+                        return false;
+                    });
                 }
-                immune.add(entity);
+                if(time > end) {
+                    immune.add(entity);
+                }
                 iterator.remove();
                 continue;
             }
-
             entity.setFallDistance(0);
-            Vector3d force = location.subtract(new Vector3d(entity.getLocation()));
-            if (force.lengthSq() == 0) {
+            ImmutableVector force = this.location.subtract(targetLocation);
+            if (force.lengthSquared() == 0) {
                 continue;
             }
 
             force = force.normalize().multiply(speed);
-            entity.setVelocity(force.toBukkitVector());
+            target.setVelocity(force, this);
         }
 
         return UpdateResult.CONTINUE;
     }
 
-    private void handleTail(Vector3d direction) {
+    private void handleTail(ImmutableVector direction) {
         TailData newData = new TailData(location, direction);
 
         if (tail.size() <= tailIndex) {
@@ -191,27 +185,27 @@ public class AirStream implements Ability {
         tailIndex = ++tailIndex % tailCount;
 
         for (TailData data : tail) {
-            Vector3d side = Vector3d.PLUS_J.cross(data.direction).normalize(Vector3d.PLUS_I);
+            ImmutableVector side = ImmutableVector.PLUS_J.crossProduct(data.direction).normalize(ImmutableVector.PLUS_I);
 
-            if (side.lengthSq() > 0) {
+            if (side.lengthSquared() > 0) {
                 side = side.normalize();
             } else {
-                side = Vector3d.PLUS_I;
+                side = ImmutableVector.PLUS_I;
             }
 
             for (double theta = 0; theta < Math.PI * 2; theta += Math.toRadians(45)) {
-                Vector3d offset = VectorUtils.rotate(side, data.direction, theta).normalize().multiply(radius);
-
-                AirElement.display(data.location.add(offset).toLocation(livingEntity.getWorld()), 1, 0.0f, 0.0f, 0.0f, 0.0f, ThreadLocalRandom.current().nextInt(10) == 0);
+                ImmutableVector offset = side.rotate(data.direction, theta).normalize().multiply(radius);
+                AirElement.display(data.location.add(offset).toLocation(world), 1, 0.0f, 0.0f, 0.0f, false);
             }
+            AirElement.sound(data.location.toLocation(world));
         }
     }
 
-    private Vector3d getDirection() {
-        Vector3d target = RayTrace.of(livingEntity).range(range).ignoreLiquids(false).result(livingEntity.getWorld()).position();
-        Vector3d direction = target.subtract(location);
+    private ImmutableVector getDirection() {
+        ImmutableVector target = user.findPosition(range, false);
+        ImmutableVector direction = target.subtract(location);
 
-        if (direction.lengthSq() > 0) {
+        if (direction.lengthSquared() > 0) {
             direction = direction.normalize();
         }
 
@@ -221,33 +215,23 @@ public class AirStream implements Ability {
     @Override
     public void destroy() {
         user.setCooldown(this);
-
         for (TemporaryFlight flight : flights) {
             SpringContext.getInstance().getBean(TemporaryService.class).revert(flight);
-//            new TemporaryFlight(flight.getLivingEntity(), 20000, true, true, false);
         }
-
     }
 
     @Override
     public Collection<Collider> getColliders() {
-        if (this.collider == null) return Collections.emptyList();
-        return Collections.singletonList(collider);
+        return this.collider == null ? Collections.emptyList() : Collections.singletonList(collider);
     }
 
     private static class TailData {
-        public Vector3d location;
-        public Vector3d direction;
+        public ImmutableVector location;
+        public ImmutableVector direction;
 
-        TailData(Vector3d location, Vector3d direction) {
+        TailData(ImmutableVector location, ImmutableVector direction) {
             this.location = location;
             this.direction = direction;
         }
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
     }
 }

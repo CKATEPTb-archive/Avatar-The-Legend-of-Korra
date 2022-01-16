@@ -20,16 +20,14 @@ import ru.ckateptb.tablecloth.config.ConfigField;
         instruction = "Passive Ability",
         canBindToSlot = false
 )
-public class AirSaturation implements Ability {
+public class AirSaturation extends Ability {
     @ConfigField(name = "exhaustionModifier", comment = "Hunger multiplier that the user will receive")
     private static double exhaustionModifier = 0.3;
-    private AbilityUser abilityUser;
     private Float exhaustionLevel = null;
     private Player player;
 
     @Override
-    public ActivateResult activate(AbilityUser abilityUser, ActivationMethod activationMethod) {
-        this.setUser(abilityUser);
+    public ActivateResult activate( ActivationMethod activationMethod) {
         return activationMethod == ActivationMethod.PASSIVE ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;
     }
 
@@ -37,7 +35,7 @@ public class AirSaturation implements Ability {
     public UpdateResult update() {
         if (player != null && exhaustionModifier > 0) {
             float exhaustionLevel = player.getExhaustion();
-            if(this.exhaustionLevel == null) {
+            if (this.exhaustionLevel == null) {
                 this.exhaustionLevel = exhaustionLevel;
             } else {
                 if (exhaustionLevel < this.exhaustionLevel) {
@@ -53,18 +51,12 @@ public class AirSaturation implements Ability {
 
     @Override
     public void destroy() {
-
     }
 
     @Override
-    public AbilityUser getUser() {
-        return this.abilityUser;
-    }
-
-    @Override
-    public void setUser(AbilityUser abilityUser) {
-        this.abilityUser = abilityUser;
-        if (abilityUser instanceof PlayerAbilityUser playerAbilityUser) {
+    public void setUser(AbilityUser user) {
+        super.setUser(user);
+        if (user instanceof PlayerAbilityUser playerAbilityUser) {
             player = playerAbilityUser.getEntity();
         }
     }

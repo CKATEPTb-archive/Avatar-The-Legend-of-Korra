@@ -1,29 +1,26 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
-import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import ru.ckateptb.abilityslots.ability.Ability;
-import ru.ckateptb.abilityslots.ability.conditional.AbilityConditional;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.removalpolicy.*;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.entity.AbilityTargetLiving;
+import ru.ckateptb.abilityslots.predicate.AbilityConditional;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.abilityslots.service.AbilityUserService;
 import ru.ckateptb.abilityslots.user.AbilityUser;
-import ru.ckateptb.tablecloth.collision.RayTrace;
-import ru.ckateptb.tablecloth.collision.collider.AABB;
-import ru.ckateptb.tablecloth.collision.collider.Ray;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 import ru.ckateptb.tablecloth.spring.SpringContext;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Objects;
 
 @Getter
 @AbilityInfo(
@@ -34,9 +31,10 @@ import java.util.concurrent.ThreadLocalRandom;
         category = "air",
         description = "The ability requires high concentration, but its power is overwhelming! Targets affected by this ability begin to choke, which is why they lose concentration and the ability to use abilities. All they have to do is run!",
         instruction = "Hold Sneak",
-        cooldown = 5000
+        cooldown = 5000,
+        cost = 30
 )
-public class Suffocate implements Ability {
+public class Suffocate extends Ability {
     @ConfigField
     private static long chargeTime = 500;
     @ConfigField
@@ -77,9 +75,8 @@ public class Suffocate implements Ability {
     private static double renderMinRadius = 0.5;
     @ConfigField
     private static int renderLayers = 5;
-
-    private AbilityUser user;
-    private LivingEntity livingEntity;
+    @ConfigField
+    private static long energyCostInterval = 1000;
 
     private LivingEntity target;
     private long startTime;
@@ -87,37 +84,31 @@ public class Suffocate implements Ability {
     private long nextSlowTime;
     private long nextBlindTime;
     private boolean started;
-    private CompositeRemovalPolicy removalPolicy;
-    private SuffocatingConditional conditional;
+    private RemovalConditional removal;
+    private AbilityConditional conditional;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
+    public ActivateResult activate(ActivationMethod method) {
         this.setUser(user);
         this.startTime = System.currentTimeMillis();
         this.started = false;
 
-        this.target = (LivingEntity) RayTrace.of(livingEntity)
-                .range(selectRange)
-                .type(RayTrace.Type.ENTITY)
-                .raySize(selectScale)
-                .filter(e -> e instanceof LivingEntity && e != livingEntity)
-                .result(livingEntity.getWorld()).entity();
+        this.target = user.findLivingEntity(selectRange, selectScale, true, entity -> entity != livingEntity);
 
-        if (target == null) {
+        if (target == null || !user.canUse(target.getLocation())) {
             return ActivateResult.NOT_ACTIVATE;
         }
 
-        if (!user.canUse(target.getLocation())) {
-            return ActivateResult.NOT_ACTIVATE;
-        }
-
-        this.removalPolicy = new CompositeRemovalPolicy(
-                new IsDeadRemovalPolicy(user),
-                new OutOfRangeRemovalPolicy(() -> livingEntity.getLocation(), () -> target.getLocation(), range),
-                new SwappedSlotsRemovalPolicy<>(user, Suffocate.class),
-                new OutOfWorldRemovalPolicy(user),
-                new SneakingRemovalPolicy(user, true)
-        );
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .costInterval(energyCostInterval)
+                .range(() -> livingEntity.getLocation(), () -> target.getLocation(), range)
+                .sneaking(true)
+                .slot()
+                .custom((user, ability) -> !Objects.equals(user.getWorld(), target.getWorld()))
+                .build();
 
         return ActivateResult.ACTIVATE;
     }
@@ -125,18 +116,9 @@ public class Suffocate implements Ability {
     @Override
     public UpdateResult update() {
         long time = System.currentTimeMillis();
-
-        if (this.removalPolicy.shouldRemove()) {
-            return UpdateResult.REMOVE;
-        }
-
-        if (time < this.startTime + chargeTime) {
-            return UpdateResult.CONTINUE;
-        }
-
-        if (!user.canUse(target.getLocation())) {
-            return UpdateResult.REMOVE;
-        }
+        if (this.removal.shouldRemove(user, this)) return UpdateResult.REMOVE;
+        if (time < this.startTime + chargeTime) return UpdateResult.CONTINUE;
+        if (!user.canUse(target.getLocation())) return UpdateResult.REMOVE;
 
         if (!this.started) {
             this.started = true;
@@ -147,20 +129,13 @@ public class Suffocate implements Ability {
             AbilityUser target = SpringContext.getInstance().getBean(AbilityUserService.class).getAbilityUser(this.target);
             if (target != null) {
                 // Prevent the user from bending.
-                conditional = new SuffocatingConditional();
-                target.getAbilityActivateConditional().add(conditional);
+                conditional = (user, ability) -> false;
+                target.addAbilityActivateConditional(conditional);
             }
         }
 
-        if (requireConstantAim) {
-            AABB bounds = new AABB(new Vector3d(-0.5, -0.5, -0.5), new Vector3d(0.5, 0.5, 0.5))
-                    .scale(constantAimRadius)
-                    .at(new Vector3d(target.getLocation()));
-            Location eyeLocation = livingEntity.getEyeLocation();
-            Ray ray = new Ray(new Vector3d(eyeLocation), new Vector3d(eyeLocation.getDirection()));
-            if (!bounds.intersects(ray)) {
-                return UpdateResult.REMOVE;
-            }
+        if (requireConstantAim && user.findLivingEntity(selectRange, constantAimRadius, true, entity -> entity == target) == null) {
+            return UpdateResult.REMOVE;
         }
 
         handleEffects();
@@ -171,21 +146,21 @@ public class Suffocate implements Ability {
 
     private void handleEffects() {
         long time = System.currentTimeMillis();
-
+        AbilityTargetLiving target = AbilityTarget.of(this.target);
         if (damageAmount > 0 && time > this.nextDamageTime) {
-            target.damage(damageAmount, livingEntity);
+            target.damage(damageAmount, this);
             this.nextDamageTime = time + damageInterval;
         }
 
         if (slowAmplifier > 0 && time >= this.nextSlowTime) {
-            target.removePotionEffect(PotionEffectType.SLOW);
-            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, slowInterval / 50, slowAmplifier - 1, true, false));
+            target.removePotionEffect(this, PotionEffectType.SLOW);
+            target.addPotionEffect(this, new PotionEffect(PotionEffectType.SLOW, slowInterval / 50, slowAmplifier - 1, true, false));
             this.nextSlowTime = time + slowInterval;
         }
 
         if (blindAmplifier > 0 && time >= this.nextBlindTime) {
-            target.removePotionEffect(PotionEffectType.BLINDNESS);
-            target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, slowInterval / 50, slowAmplifier - 1, true, false));
+            target.removePotionEffect(this, PotionEffectType.BLINDNESS);
+            target.addPotionEffect(this, new PotionEffect(PotionEffectType.BLINDNESS, slowInterval / 50, slowAmplifier - 1, true, false));
             this.nextBlindTime = time + blindInterval;
         }
     }
@@ -202,7 +177,7 @@ public class Suffocate implements Ability {
         double maxLayers = renderLayers;
         double layers = Math.ceil(lt * maxLayers);
         double spacing = height / (maxLayers + 1);
-        Location center = target.getLocation().add(0, 1.8 / 2.0, 0);
+        ImmutableVector center = AbilityTarget.of(target).getCenterLocation();
 
         for (int i = 1; i <= layers; ++i) {
             double y = (i * spacing) - r;
@@ -211,10 +186,10 @@ public class Suffocate implements Ability {
             for (double theta = 0.0; theta < Math.PI * 2.0; theta += Math.PI * 2.0 / 5.0) {
                 double x = r * f * Math.cos(theta);
                 double z = r * f * Math.sin(theta);
-
-                AirElement.display(center.clone().add(x, y, z), 1, 0.0f, 0.0f, 0.0f, 0.0f, ThreadLocalRandom.current().nextInt(20) == 0);
+                AirElement.display(center.add(x, y, z).toLocation(world), 1, 0.0f, 0.0f, 0.0f, false);
             }
         }
+        AirElement.sound(target.getLocation());
     }
 
     @Override
@@ -223,20 +198,7 @@ public class Suffocate implements Ability {
         AbilityUser target = SpringContext.getInstance().getBean(AbilityUserService.class).getAbilityUser(this.target);
         if (this.started && target != null) {
             // Allow the user to bend again.
-            target.getAbilityActivateConditional().remove(conditional);
-        }
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
-    }
-
-    private static class SuffocatingConditional implements AbilityConditional {
-        @Override
-        public boolean matches(AbilityUser user, AbilityInformation information) {
-            return false;
+            target.removeAbilityActivateConditional(conditional);
         }
     }
 }

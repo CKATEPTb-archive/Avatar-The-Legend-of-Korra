@@ -5,7 +5,6 @@ import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.user.AbilityUser;
 
 @AbilityInfo(
         author = "CKATEPTb",
@@ -17,15 +16,12 @@ import ru.ckateptb.abilityslots.user.AbilityUser;
         instruction = "Passive Ability",
         canBindToSlot = false
 )
-public class GracefulDescent implements Ability {
-    private AbilityUser abilityUser;
-
+public class GracefulDescent extends Ability {
     @Override
-    public ActivateResult activate(AbilityUser abilityUser, ActivationMethod activationMethod) {
-        if (activationMethod == ActivationMethod.FALL && getAbilityInstanceService().hasAbility(abilityUser, this.getClass())) {
+    public ActivateResult activate(ActivationMethod activationMethod) {
+        if (activationMethod == ActivationMethod.FALL && getAbilityInstanceService().hasAbility(user, this.getClass())) {
             return ActivateResult.NOT_ACTIVATE_AND_CANCEL_EVENT;
         }
-        this.abilityUser = abilityUser;
         return activationMethod == ActivationMethod.PASSIVE ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;
     }
 
@@ -37,15 +33,5 @@ public class GracefulDescent implements Ability {
     @Override
     public void destroy() {
 
-    }
-
-    @Override
-    public AbilityUser getUser() {
-        return this.abilityUser;
-    }
-
-    @Override
-    public void setUser(AbilityUser abilityUser) {
-        this.abilityUser = abilityUser;
     }
 }

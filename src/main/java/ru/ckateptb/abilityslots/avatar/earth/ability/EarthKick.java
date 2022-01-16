@@ -2,7 +2,6 @@ package ru.ckateptb.abilityslots.avatar.earth.ability;
 
 import lombok.Getter;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.FallingBlock;
@@ -15,14 +14,14 @@ import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.earth.EarthElement;
 import ru.ckateptb.abilityslots.common.util.VectorUtils;
-import ru.ckateptb.abilityslots.particle.ParticleEffect;
-import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
 import ru.ckateptb.tablecloth.collision.Collider;
-import ru.ckateptb.tablecloth.collision.collider.AABB;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
+import ru.ckateptb.tablecloth.particle.Particle;
 import ru.ckateptb.tablecloth.temporary.fallingblock.TemporaryFallingBlock;
-import ru.ckateptb.tablecloth.util.CollisionUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,7 +41,7 @@ import java.util.stream.Collectors;
         cooldown = 7000
 )
 @CollisionParticipant
-public class EarthKick implements Ability {
+public class EarthKick extends Ability {
     @ConfigField
     private static int blocks = 10;
     @ConfigField
@@ -52,21 +51,16 @@ public class EarthKick implements Ability {
     @ConfigField
     private static double maxTravelDistance = 10;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
     private final List<TemporaryFallingBlock> fallingBlocks = new ArrayList<>();
-    private Vector3d origin;
-    private Vector3d direction;
+    private ImmutableVector origin;
+    private ImmutableVector direction;
     private BlockData blockData;
-    private World world;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
-        Block block = user.findBlock(activationRange + 1, b -> EarthElement.isEarthNotLava(user, b) && user.canUse(b.getLocation()));
-        if (block == null) return ActivateResult.NOT_ACTIVATE;
-        this.origin = new Vector3d(block.getLocation().toCenterLocation());
+    public ActivateResult activate(ActivationMethod method) {
+        Block block = user.findBlock(activationRange + 1, true, true);
+        if (block == null || !EarthElement.isEarthNotLava(user, block) || !user.canUse(block.getLocation())) return ActivateResult.NOT_ACTIVATE;
+        this.origin = new ImmutableVector(block.getLocation().toCenterLocation());
         this.blockData = block.getBlockData();
         this.direction = user.getDirection().setY(0).normalize();
         this.launchBlocks();
@@ -84,13 +78,13 @@ public class EarthKick implements Ability {
                 continue;
             }
             Location location = fallingBlock.getLocation();
-            ParticleEffect.BLOCK_CRACK.display(location, 2, (float) Math.random(), (float) Math.random(), (float) Math.random(), 0.1, blockData);
-            ParticleEffect.BLOCK_CRACK.display(location, 2, (float) Math.random(), (float) Math.random(), (float) Math.random(), 0.2, blockData);
-            AABB collider = AABB.from(fallingBlock).at(new Vector3d(location));
-            CollisionUtils.handleEntityCollisions(livingEntity, collider, (entity) -> {
-                ((LivingEntity) entity).damage(damage, livingEntity);
-                return false;
-            }, true);
+            Particle.BLOCK_CRACK.display(location, 2, (float) Math.random(), (float) Math.random(), (float) Math.random(), 0.1, blockData);
+            Particle.BLOCK_CRACK.display(location, 2, (float) Math.random(), (float) Math.random(), (float) Math.random(), 0.2, blockData);
+            AxisAlignedBoundingBoxCollider collider = new AxisAlignedBoundingBoxCollider(fallingBlock).at(new ImmutableVector(location));
+            collider.handleEntityCollision(livingEntity, true, entity -> {
+                AbilityTarget.of((LivingEntity) entity).damage(damage, this);
+                return CollisionCallbackResult.CONTINUE;
+            });
         }
         for (int id : ids) {
             if (id < fallingBlocks.size()) {
@@ -106,31 +100,24 @@ public class EarthKick implements Ability {
     private void launchBlocks() {
         EarthElement.play(origin.toLocation(world));
         for (int i = 0; i < blocks; i++) {
-            Vector3d direction = this.direction;
+            ImmutableVector direction = this.direction;
             Random random = new Random();
             direction = VectorUtils.rotateYaw(direction, Math.toRadians(random.nextInt(-20, 20)));
             direction = VectorUtils.rotatePitch(direction, Math.toRadians(random.nextInt(-45, -20)));
-            direction = direction.add(new Vector3d(0, 0.8, 0)).normalize();
+            direction = direction.add(0, 0.8, 0).normalize();
             TemporaryFallingBlock temporaryFallingBlock = new TemporaryFallingBlock(origin.toLocation(world).add(0, 1, 0), blockData, maxTravelDistance, false, true);
-            temporaryFallingBlock.getFallingBlock().setVelocity(direction.toBukkitVector());
+            temporaryFallingBlock.getFallingBlock().setVelocity(direction);
             fallingBlocks.add(temporaryFallingBlock);
         }
     }
 
     @Override
     public Collection<Collider> getColliders() {
-        return fallingBlocks.stream().map(TemporaryFallingBlock::getFallingBlock).map(AABB::from).collect(Collectors.toList());
+        return fallingBlocks.stream().map(TemporaryFallingBlock::getFallingBlock).map(AxisAlignedBoundingBoxCollider::new).collect(Collectors.toList());
     }
 
     @Override
     public void destroy() {
 
-    }
-
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
-        this.world = livingEntity.getWorld();
     }
 }

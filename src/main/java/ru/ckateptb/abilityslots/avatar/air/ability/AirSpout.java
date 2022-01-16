@@ -4,6 +4,7 @@ import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -15,26 +16,22 @@ import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.IsDeadRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.IsOfflineRemovalPolicy;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
-import ru.ckateptb.tablecloth.collision.RayTrace;
-import ru.ckateptb.tablecloth.collision.collider.AABB;
+import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 import ru.ckateptb.tablecloth.spring.SpringContext;
 import ru.ckateptb.tablecloth.temporary.TemporaryService;
 import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
-import ru.ckateptb.tablecloth.util.WorldUtils;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.CompletableFuture;
 
 @Getter
 @AbilityInfo(
@@ -45,10 +42,11 @@ import java.util.concurrent.ThreadLocalRandom;
         category = "air",
         description = "Creates a column of air below you that allows you to soar above the ground",
         instruction = "Left Click",
-        cooldown = 0
+        cooldown = 0,
+        cost = 10
 )
 @CollisionParticipant
-public class AirSpout implements Ability {
+public class AirSpout extends Ability {
     @ConfigField
     private static long duration = 0;
     @ConfigField
@@ -59,108 +57,91 @@ public class AirSpout implements Ability {
     private static double maxSpeed = 0.2;
     @ConfigField
     private static int renderDelay = 100;
+    @ConfigField
+    private static long energyCostInterval = 1000;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
-    private AABB collider;
+    private AxisAlignedBoundingBoxCollider collider;
     private TemporaryFlight flight;
     private long nextRenderTime;
     private long startTime;
     private Listener moveHandler;
-    private CompositeRemovalPolicy removalPolicy;
+    private RemovalConditional removal;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
-
-        if(getAbilityInstanceService().destroyInstanceType(user, getClass())) {
+    public ActivateResult activate(ActivationMethod method) {
+        if (getAbilityInstanceService().destroyInstanceType(user, getClass())
+                || livingEntity.getEyeLocation().getBlock().isLiquid()
+                || user.getDistanceAboveGround() > heightBuffer + heightBuffer) {
             return ActivateResult.NOT_ACTIVATE;
         }
-
-        if (livingEntity.getEyeLocation().getBlock().isLiquid()) {
-            return ActivateResult.NOT_ACTIVATE;
-        }
-
-        if (WorldUtils.getDistanceAboveGround(livingEntity, false) > height + heightBuffer) {
-            return ActivateResult.NOT_ACTIVATE;
-        }
-
         this.nextRenderTime = System.currentTimeMillis();
         this.flight = new TemporaryFlight(livingEntity, duration, true, false, true);
         this.startTime = System.currentTimeMillis();
-        this.moveHandler = new MoveHandler(user);
-        this.removalPolicy = new CompositeRemovalPolicy(
-                new IsDeadRemovalPolicy(user),
-                new IsOfflineRemovalPolicy(user)
-        );
+        this.moveHandler = new MoveHandler(user, this);
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .canUse(() -> livingEntity.getLocation())
+                .costInterval(energyCostInterval)
+                .custom((user, ability) -> livingEntity.getEyeLocation().getBlock().isLiquid())
+                .duration(duration)
+                .build();
         Bukkit.getPluginManager().registerEvents(moveHandler, AbilitySlots.getInstance());
         return ActivateResult.ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
-        if(removalPolicy.shouldRemove()) {
+        if (removal.shouldRemove(user, this)) {
             return UpdateResult.REMOVE;
         }
         double maxHeight = height + heightBuffer;
-        Location location = livingEntity.getLocation();
-        if (!user.canUse(location)) {
-            return UpdateResult.REMOVE;
-        }
+        ImmutableVector location = user.getLocation();
+        Block block = location.getFirstRelativeBlock(world, BlockFace.DOWN, maxHeight + 1);
+        if (!block.isLiquid() && block.isPassable()) return UpdateResult.REMOVE;
+        ImmutableVector ground = location.setY(block.getY());
 
-        if (livingEntity.getEyeLocation().getBlock().isLiquid()) {
-            return UpdateResult.REMOVE;
-        }
-
-        if (duration != 0 && System.currentTimeMillis() > this.startTime + duration)
-            return UpdateResult.REMOVE;
-
-        Vector3d ground = RayTrace.of(new Vector3d(location), Vector3d.MINUS_J).type(RayTrace.Type.BLOCK).range(maxHeight + 1).ignoreLiquids(false).result(livingEntity.getWorld()).position();
-
-        double distance = WorldUtils.getDistanceAboveGround(livingEntity, false);
-        if(distance > maxHeight) {
+        double distance = user.getDistanceAboveGround();
+        if (distance > maxHeight) {
             return UpdateResult.REMOVE;
         }
 
         // Remove flight when user goes above the top. This will drop them back down into the acceptable height.
-        if(livingEntity instanceof Player player) {
+        if (livingEntity instanceof Player player) {
             player.setAllowFlight(!(distance > height));
             player.setFlying(!(distance > height));
         }
 
-        Vector3d mid = ground.add(Vector3d.PLUS_J.multiply(distance / 2.0));
+        ImmutableVector mid = ground.add(ImmutableVector.PLUS_J.multiply(distance / 2.0));
 
         // Create a bounding box for collision that extends through the spout from the ground to the player.
-        collider = new AABB(new Vector3d(-0.5, -distance / 2.0, -0.5), new Vector3d(0.5, distance / 2.0, 0.5)).at(mid);
+        collider = new AxisAlignedBoundingBoxCollider(world, new ImmutableVector(-0.5, -distance / 2.0, -0.5), new ImmutableVector(0.5, distance / 2.0, 0.5)).at(mid);
 
         render(ground);
 
         return UpdateResult.CONTINUE;
     }
 
+    @Override
+    public Collection<Collider> getColliders() {
+        return this.collider == null ? Collections.emptyList() : Collections.singletonList(this.collider);
+    }
 
-    private void render(Vector3d ground) {
+    private void render(ImmutableVector ground) {
         long time = System.currentTimeMillis();
         if (time < this.nextRenderTime) return;
 
         double dy = livingEntity.getLocation().getY() - ground.getY();
-
-        for (int i = 0; i < dy; ++i) {
-            Location location = ground.toLocation(livingEntity.getWorld()).add(0, i, 0);
-            AirElement.display(location, 3, 0, 0.4f, 0.4f, 0.4f, ThreadLocalRandom.current().nextInt(20) == 0);
-        }
+        CompletableFuture.runAsync(() -> {
+            for (int i = 0; i < dy; ++i) {
+                Location location = ground.toLocation(livingEntity.getWorld()).add(0, i, 0);
+                AirElement.display(location, 3, 0.4f, 0.4f, 0.4f, false);
+            }
+            AirElement.sound(livingEntity.getLocation());
+        });
 
         nextRenderTime = time + renderDelay;
-    }
-
-    @Override
-    public Collection<Collider> getColliders() {
-        if (this.collider != null) {
-            return Collections.singletonList(this.collider);
-        }
-
-        return Collections.emptyList();
     }
 
     @Override
@@ -170,27 +151,23 @@ public class AirSpout implements Ability {
         PlayerMoveEvent.getHandlerList().unregister(moveHandler);
     }
 
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
-    }
-
     public static class MoveHandler implements Listener {
         private final AbilityUser user;
+        private final AirSpout spout;
 
-        public MoveHandler(AbilityUser user) {
+        public MoveHandler(AbilityUser user, AirSpout spout) {
             this.user = user;
+            this.spout = spout;
         }
 
         @EventHandler(ignoreCancelled = true)
         public void onPlayerMove(PlayerMoveEvent event) {
             LivingEntity entity = user.getEntity();
-            if(event.getPlayer().equals(entity)) {
-                Vector3d velocity = new Vector3d(event.getTo().clone().subtract(event.getFrom())).setY(0);
+            if (event.getPlayer().equals(entity)) {
+                ImmutableVector velocity = new ImmutableVector(event.getTo().clone().subtract(event.getFrom())).setY(0);
                 if (velocity.length() > maxSpeed) {
                     velocity = velocity.normalize().multiply(maxSpeed);
-                    entity.setVelocity(velocity.toBukkitVector());
+                    AbilityTarget.of(entity).setVelocity(velocity, spout);
                 }
             }
         }

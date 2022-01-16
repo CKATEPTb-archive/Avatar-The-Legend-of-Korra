@@ -1,11 +1,8 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
-import org.bukkit.Location;
 import org.bukkit.Sound;
-import org.bukkit.World;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import ru.ckateptb.abilityslots.ability.Ability;
@@ -13,21 +10,20 @@ import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.common.particlestream.ParticleStream;
-import ru.ckateptb.abilityslots.removalpolicy.*;
-import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.abilityslots.common.util.VectorUtils;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.entity.AbilityTargetLiving;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.tablecloth.collision.Collider;
-import ru.ckateptb.tablecloth.collision.collider.Sphere;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
-import ru.ckateptb.tablecloth.util.CollisionUtils;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.stream.Collectors;
 
 @Getter
 @AbilityInfo(
@@ -38,10 +34,11 @@ import java.util.stream.Collectors;
         category = "air",
         description = "Compresses air, making a sound so loud that targets affected by it lose focus and take damage",
         instruction = "Hold Sneak for charge up then Release Sneak",
-        cooldown = 3500
+        cooldown = 3500,
+        cost = 10
 )
 @CollisionParticipant
-public class SonicBlast implements Ability {
+public class SonicBlast extends Ability {
     @ConfigField
     private static double damage = 4;
     @ConfigField
@@ -57,90 +54,86 @@ public class SonicBlast implements Ability {
     @ConfigField
     private static int power = 2;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
     private long startTime;
     private boolean charged;
-    private Vector3d location;
-    private Vector3d origin;
-    private Vector3d direction;
+    private ImmutableVector location;
+    private ImmutableVector origin;
+    private ImmutableVector direction;
     private Collider collider;
-    private CompositeRemovalPolicy removalPolicy;
+    private RemovalConditional removal;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
+    public ActivateResult activate(ActivationMethod method) {
         this.startTime = System.currentTimeMillis();
-        this.charged = false;
-        this.removalPolicy = new CompositeRemovalPolicy(
-                new IsDeadRemovalPolicy(user),
-                new SwappedSlotsRemovalPolicy<>(user, getClass()),
-                new OutOfWorldRemovalPolicy(user),
-                new IsOfflineRemovalPolicy(user)
-        );
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .slot()
+                .canUse(() -> livingEntity.getLocation())
+                .build();
         return ActivateResult.ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
-        if (removalPolicy.shouldRemove()) {
-            return UpdateResult.REMOVE;
-        }
-        World world = livingEntity.getWorld();
-        if (livingEntity instanceof Player player && player.isSneaking()) {
+        if (removal.shouldRemove(user, this)) return UpdateResult.REMOVE;
+        if (direction == null && user.isSneaking()) {
             if (System.currentTimeMillis() > startTime + chargeTime) {
                 charged = true;
-                Location eyeLocation = livingEntity.getEyeLocation();
-                Vector3d direction = new Vector3d(eyeLocation.getDirection());
-                Vector3d location = new Vector3d(eyeLocation).add(direction);
-                Vector3d side = direction.cross(Vector3d.PLUS_J).normalize(Vector3d.PLUS_I);
-                Vector3d l1 = location.add(side.multiply(0.5));
-                Vector3d l2 = location.subtract(side.multiply(0.5));
-                AirElement.display(l1.toLocation(world), 1, 0.0f, 0.0f, 0.0f, 0.0f);
-                AirElement.display(l2.toLocation(world), 1, 0.0f, 0.0f, 0.0f, 0.0f);
+                ImmutableVector direction = user.getDirection();
+                ImmutableVector location = user.getEyeLocation().add(direction);
+                ImmutableVector side = direction.crossProduct(ImmutableVector.PLUS_J).normalize(ImmutableVector.PLUS_I);
+                ImmutableVector left = location.subtract(side.multiply(0.5));
+                ImmutableVector right = location.add(side.multiply(0.5));
+                AirElement.display(left.toLocation(world), 1, 0.0f, 0.0f, 0.0f, false);
+                AirElement.display(right.toLocation(world), 1, 0.0f, 0.0f, 0.0f, false);
             }
-            return UpdateResult.CONTINUE;
-        } else if (!charged) {
-            return UpdateResult.REMOVE;
         } else {
+            if (!charged) return UpdateResult.REMOVE;
             if (direction == null) {
-                Location eyeLocation = livingEntity.getEyeLocation();
-                direction = new Vector3d(eyeLocation.getDirection()).normalize();
-                location = new Vector3d(eyeLocation).add(direction.multiply(speed));
+                if (!user.removeEnergy(this)) return UpdateResult.REMOVE;
+                direction = user.getDirection();
+                location = user.getEyeLocation();
                 origin = location;
                 world.playSound(location.toLocation(world), Sound.ENTITY_GENERIC_EXPLODE, 1, 0);
                 user.setCooldown(this);
-                removalPolicy.removePolicyType(SwappedSlotsRemovalPolicy.class);
+                removal = new RemovalConditional.Builder()
+                        .offline()
+                        .dead()
+                        .world()
+                        .range(() -> origin.toLocation(world), () -> location.toLocation(world), range)
+                        .canUse(() -> location.toLocation(world))
+                        .build();
             }
+            if (new SphereCollider(world, this.location, 0.1).handleBlockCollisions(false)) return UpdateResult.REMOVE;
+            ImmutableVector side = ImmutableVector.PLUS_J.crossProduct(this.direction).normalize();
+            VectorUtils.circle(side.multiply(radius), this.direction, 40).forEach(v ->
+                    AirElement.display(location.add(v).toLocation(world), 1, 0, 0, 0, false)
+            );
+            AirElement.sound(location.toLocation(world));
+            this.collider = new SphereCollider(world, location, radius);
+            this.collider.handleBlockCollisions(false, false, block -> {
+                AirElement.handleBlockInteractions(user, block);
+                return CollisionCallbackResult.CONTINUE;
+            }, block -> user.canUse(block.getLocation()));
+            if (this.collider.handleEntityCollision(livingEntity, entity -> {
+                LivingEntity target = (LivingEntity) entity;
+                AbilityTargetLiving abilityTarget = AbilityTarget.of(target);
+                abilityTarget.damage(damage, this);
+                handlePotionEffect(abilityTarget, PotionEffectType.CONFUSION, power, (int) duration / 50);
+                handlePotionEffect(abilityTarget, PotionEffectType.BLINDNESS, power, (int) duration / 50);
+                return CollisionCallbackResult.END;
+            })) return UpdateResult.REMOVE;
             location = location.add(direction.multiply(speed));
+        }
+        return UpdateResult.CONTINUE;
+    }
 
-            if (location.distance(origin) > range) {
-                return UpdateResult.REMOVE;
-            }
-
-            if (!user.canUse(location.toLocation(world))) {
-                return UpdateResult.REMOVE;
-            }
-
-            if (location.toBlock(world).isLiquid()) {
-                return UpdateResult.REMOVE;
-            }
-
-            AirElement.display(location.toLocation(world), 1, (float) radius / 2, (float) radius / 2, (float) radius / 2);
-            this.collider = new Sphere(location, radius);
-            boolean hit = CollisionUtils.handleEntityCollisions(livingEntity, collider, (entity) -> {
-                if (entity instanceof LivingEntity target) {
-                    target.damage(damage, livingEntity);
-                    target.removePotionEffect(PotionEffectType.CONFUSION);
-                    target.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, (int) (duration / 50), power - 1, true, false));
-                    target.removePotionEffect(PotionEffectType.BLINDNESS);
-                    target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, (int) (duration / 50), power - 1, true, false));
-                    return true;
-                }
-                return false;
-            }, true, false) || CollisionUtils.handleBlockCollisions(livingEntity, new Sphere(location, radius / 2), o -> false, block -> !block.isPassable() || block.isLiquid(), false).size() > 0;
-            return hit ? UpdateResult.REMOVE : UpdateResult.CONTINUE;
+    private void handlePotionEffect(AbilityTargetLiving target, PotionEffectType type, int amplifier, int duration) {
+        PotionEffect effect = target.getPotionEffect(this, type);
+        if (effect == null || effect.getDuration() < duration || effect.getAmplifier() < amplifier) {
+            target.addPotionEffect(this, new PotionEffect(type, duration, amplifier - 1, true, false));
         }
     }
 
@@ -150,17 +143,7 @@ public class SonicBlast implements Ability {
     }
 
     @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
-    }
-
-
-    @Override
     public Collection<Collider> getColliders() {
-        if(this.collider == null) {
-            return Collections.emptyList();
-        }
-        return Collections.singleton(this.collider);
+        return this.collider == null ? Collections.emptyList() : Collections.singleton(this.collider);
     }
 }

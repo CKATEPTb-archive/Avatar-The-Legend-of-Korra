@@ -1,28 +1,23 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
-import lombok.Setter;
 import org.bukkit.Location;
-import org.bukkit.entity.LivingEntity;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.avatar.air.general.AirFlow;
-import ru.ckateptb.abilityslots.removalpolicy.CompositeRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.OutOfRangeRemovalPolicy;
-import ru.ckateptb.abilityslots.removalpolicy.SwappedSlotsRemovalPolicy;
-import ru.ckateptb.abilityslots.user.AbilityUser;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
+import ru.ckateptb.abilityslots.service.AbilityInstanceService;
 import ru.ckateptb.tablecloth.collision.Collider;
-import ru.ckateptb.tablecloth.collision.RayTrace;
-import ru.ckateptb.tablecloth.math.Vector3d;
-import ru.ckateptb.tablecloth.util.WorldUtils;
+import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
+import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
+import ru.ckateptb.tablecloth.config.ConfigField;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -34,87 +29,79 @@ import java.util.Collections;
         activationMethods = {ActivationMethod.SNEAK, ActivationMethod.LEFT_CLICK},
         category = "air",
         description = "A strong but harmless stream of air that flies from point A to point B, capturing everything in its path. If item B is not specified, it will be specified automatically",
-        instruction = "Tap Sneak to indicate the destination (point B, optional). Left Click",
-        cooldown = 1250
+        instruction = "Tap Sneak to indicate the destination \\(point B, optional\\). Left Click",
+        cooldown = 1250,
+        cost = 5
 )
 @CollisionParticipant(destroyAbilities = {
         AirSuction.class,
         AirSwipe.class,
-        AirBlast.class
+        AirSuction.class
 })
-public class AirSuction implements Ability, AirFlow {
-    private AbilityUser user;
-    private LivingEntity entity;
-    @Setter
-    private Location original;
-    private Location location;
-    private Vector3d direction;
-    @Setter
+public class AirSuction extends Ability {
+    @Getter
+    @ConfigField
+    private static double selectRange = 8;
+    @Getter
+    @ConfigField
+    private static double distance = 20;
+    @ConfigField
+    private static double speed = 1.2;
+    @ConfigField
+    private static double pushRadius = 1.5;
+    @ConfigField
+    private static double pushPowerSelf = 2.1;
+    @ConfigField
+    private static double pushPowerOther = 2.1;
+
+    private ImmutableVector original;
+    private ImmutableVector location;
+    private ImmutableVector direction;
+    private Collider collider;
+    private RemovalConditional removal = new RemovalConditional.Builder().offline().dead().world().build();
     private boolean pushSelf;
-    private AirBlast blast;
 
     @Override
-    public ActivateResult activate(AbilityUser abilityUser, ActivationMethod activationMethod) {
-        return getActivationResult(abilityUser, activationMethod, getAbilityInstanceService().getAbilityUserInstances(abilityUser, getClass()).stream().filter(ability -> ability.getLocation() == null).findFirst());
-
-    }
-
-    public void launch() {
-        Location eyeLocation = entity.getEyeLocation();
-        if (this.original == null) {
-            this.original = eyeLocation;
-            this.pushSelf = false;
+    public ActivateResult activate(ActivationMethod method) {
+        AbilityInstanceService instanceService = getAbilityInstanceService();
+        AirSuction ability = instanceService.getAbilityUserInstances(user, AirSuction.class).stream().filter(suction -> suction.getDirection() == null).findFirst().orElse(this);
+        if (method == ActivationMethod.SNEAK && !ability.selectOriginal()) {
+            return ActivateResult.NOT_ACTIVATE;
         }
-        Vector3d direction = new Vector3d(eyeLocation.getDirection());
-        boolean ignoreLiquids = eyeLocation.getBlock().isLiquid();
-        RayTrace.CompositeResult result = RayTrace.of(new Vector3d(eyeLocation), direction)
-                .type(RayTrace.Type.COMPOSITE)
-                .filter(e -> e instanceof LivingEntity && e != entity)
-                .range(AirBlast.getDistance()).ignoreLiquids(ignoreLiquids)
-                .result(entity.getWorld());
-        LivingEntity livingEntity = (LivingEntity) result.entity();
-        if (livingEntity != null) {
-            this.location = WorldUtils.getEntityCenter(livingEntity).toLocation(livingEntity.getWorld());
-        } else {
-            this.location = result
-                    .position()
-                    .subtract(direction.multiply(0.5))
-                    .toLocation(eyeLocation.getWorld());
+        if (method == ActivationMethod.LEFT_CLICK && user.removeEnergy(this)) {
+            ability.launch();
         }
-        this.direction = new Vector3d(original.clone().subtract(location)).normalize();
-
-        try {
-            this.blast = AirBlast.class.getConstructor().newInstance();
-        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            e.printStackTrace();
-            return;
-        }
-
-        this.blast.initialize(user, this.location, this.direction, this.pushSelf);
-
-        this.user.setCooldown(this);
-    }
-
-
-    public boolean selectOriginal() {
-        return AirBlast.selectOriginal(this);
+        return ability == this ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
-        if (this.original == null) return UpdateResult.REMOVE;
-        if (this.blast != null) {
-            return this.blast.update();
-        } else {
-            if (new CompositeRemovalPolicy(
-                    new OutOfRangeRemovalPolicy(() -> this.original, () -> this.entity.getLocation(), AirBlast.getSelectRange() + 2),
-                    new SwappedSlotsRemovalPolicy<>(user, AirSuction.class)
-            ).shouldRemove()) {
-                return UpdateResult.REMOVE;
-            }
-            AirElement.display(this.original, 4, 0.5f, 0.5f, 0.5f);
+        if (removal.shouldRemove(user, this)) {
+            return UpdateResult.REMOVE;
+        } else if (this.direction != null) {
+            this.collider = new SphereCollider(world, this.location, pushRadius);
+            this.collider.handleBlockCollisions(false, false, block -> {
+                AirElement.handleBlockInteractions(user, block);
+                return CollisionCallbackResult.CONTINUE;
+            }, block -> user.canUse(block.getLocation()));
+            this.collider.handleEntityCollision(livingEntity, false, pushSelf, entity -> {
+                AbilityTarget target = AbilityTarget.of(entity);
+                double pushPower = pushPowerOther;
+                if (entity == livingEntity) {
+                    pushPower = pushPowerSelf;
+                }
+                target.setVelocity(this.direction.multiply(pushPower), this);
+                entity.setFireTicks(0);
+                return CollisionCallbackResult.CONTINUE;
+            });
+            AirElement.display(location.toLocation(world), 4, 0.5f, 0.5f, 0.5f);
+            this.location = this.location.add(this.direction.multiply(speed));
+            return new SphereCollider(world, this.location, 0.1).handleBlockCollisions(false) ? UpdateResult.REMOVE : UpdateResult.CONTINUE;
+        } else if (this.original != null) {
+            AirElement.display(this.original.toLocation(world), 4, 0.5f, 0.5f, 0.5f);
+            return UpdateResult.CONTINUE;
         }
-        return UpdateResult.CONTINUE;
+        return UpdateResult.REMOVE;
     }
 
     @Override
@@ -122,17 +109,48 @@ public class AirSuction implements Ability, AirFlow {
 
     }
 
-    @Override
-    public void setUser(AbilityUser abilityUser) {
-        this.user = abilityUser;
-        this.entity = abilityUser.getEntity();
+    public boolean selectOriginal() {
+        if (this.direction != null) return false;
+        boolean ignoreLiquids = user.getEyeLocation().toBlock(world).isLiquid();
+        ImmutableVector original = user.findPosition(selectRange, ignoreLiquids);
+        Location location = original.toLocation(world);
+        if (location.getBlock().isLiquid() || !user.canUse(location)) {
+            return false;
+        }
+        this.original = original;
+        this.pushSelf = true;
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .canUse(() -> location)
+                .range(() -> location, () -> user.getEntity().getLocation(), selectRange * 1.5)
+                .slot()
+                .build();
+        return true;
+    }
+
+    public void launch() {
+        if (this.direction != null) return;
+        if (this.original == null) {
+            this.original = user.getEyeLocation();
+        }
+        boolean ignoreLiquids = user.getEyeLocation().toBlock(world).isLiquid();
+        this.location = user.findPosition(distance, ignoreLiquids);
+        this.direction = this.original.subtract(this.location).normalize();
+        this.original = this.location;
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .canUse(() -> this.location.toLocation(world))
+                .range(() -> this.original.toLocation(world), () -> this.location.toLocation(world), distance)
+                .build();
+        user.setCooldown(this);
     }
 
     @Override
     public Collection<Collider> getColliders() {
-        if (blast == null) {
-            return Collections.emptyList();
-        }
-        return blast.getColliders();
+        return this.collider == null ? Collections.emptyList() : Collections.singleton(this.collider);
     }
 }

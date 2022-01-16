@@ -3,24 +3,19 @@ package ru.ckateptb.abilityslots.avatar.air.ability;
 import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
-import ru.ckateptb.abilityslots.removalpolicy.*;
-import ru.ckateptb.abilityslots.user.AbilityUser;
-import ru.ckateptb.tablecloth.collision.collider.AABB;
+import ru.ckateptb.abilityslots.entity.AbilityTarget;
+import ru.ckateptb.abilityslots.predicate.RemovalConditional;
+import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.math.Vector3d;
-import ru.ckateptb.tablecloth.util.WorldUtils;
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 import java.util.Arrays;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 @AbilityInfo(
@@ -31,63 +26,55 @@ import java.util.concurrent.ThreadLocalRandom;
         category = "air",
         description = "Creates a balloon under your feet for movement",
         instruction = "Jump and Left Click at sprinting time",
-        cooldown = 3500
+        cooldown = 3500,
+        cost = 10
 )
-public class AirScooter implements Ability {
+public class AirScooter extends Ability {
     @ConfigField
     private static double speed = 0.7;
     @ConfigField
     private static long duration = 0;
     @ConfigField
     private static boolean withoutSprinting = false;
+    @ConfigField
+    private static long energyCostInterval = 1000;
 
-    private AbilityUser user;
-    private LivingEntity livingEntity;
-
-    private CompositeRemovalPolicy removalPolicy;
+    private RemovalConditional removal;
     private HeightSmoother heightSmoother;
     public boolean canRender = true;
     private double verticalPosition = 0;
     private int stuckCount = 0;
 
     @Override
-    public ActivateResult activate(AbilityUser user, ActivationMethod method) {
-        this.setUser(user);
+    public ActivateResult activate(ActivationMethod method) {
         if (getAbilityInstanceService().destroyInstanceType(user, AirScooter.class) || method == ActivationMethod.DAMAGE) {
             return ActivateResult.NOT_ACTIVATE;
         }
         this.heightSmoother = new HeightSmoother();
         Location location = livingEntity.getLocation();
-        double dist = WorldUtils.getDistanceAboveGround(livingEntity, false);
+        double dist = user.getDistanceAboveGround();
         if (dist < 0.5 || dist > 5) {
             return ActivateResult.NOT_ACTIVATE;
         }
-
-        this.removalPolicy = new CompositeRemovalPolicy(
-                new IsOfflineRemovalPolicy(user),
-                new IsDeadRemovalPolicy(user),
-                new SneakingRemovalPolicy(user, false)
-        );
-        if (duration > 0) {
-            this.removalPolicy.addPolicy(new DurationRemovalPolicy(duration));
-        }
-        return !location.getBlock().isLiquid() && (withoutSprinting || (livingEntity instanceof Player player && player.isSprinting())) ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;
+        this.removal = new RemovalConditional.Builder()
+                .offline()
+                .dead()
+                .world()
+                .sneaking(false)
+                .canUse(() -> livingEntity.getLocation())
+                .duration(duration)
+                .costInterval(energyCostInterval)
+                .build();
+        return !location.getBlock().isLiquid() && (withoutSprinting || user.isSprinting()) ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;
     }
 
     @Override
     public UpdateResult update() {
-        if (removalPolicy.shouldRemove()) {
-            return UpdateResult.REMOVE;
-        }
-        if (!user.canUse(livingEntity.getLocation())) {
-            return UpdateResult.REMOVE;
-        }
-
-        stuckCount = new Vector3d(livingEntity.getVelocity()).lengthSq() < 0.1 ? stuckCount + 1 : 0;
+        if (removal.shouldRemove(user, this)) return UpdateResult.REMOVE;
+        this.stuckCount = new ImmutableVector(livingEntity.getVelocity()).lengthSquared() < 0.1 ? stuckCount + 1 : 0;
         if (stuckCount > 10 || !move()) {
             return UpdateResult.REMOVE;
         }
-
         if (canRender) {
             render();
         }
@@ -99,12 +86,6 @@ public class AirScooter implements Ability {
         user.setCooldown(this);
     }
 
-    @Override
-    public void setUser(AbilityUser user) {
-        this.user = user;
-        this.livingEntity = user.getEntity();
-    }
-
     public void render() {
         double rotationFrequency = 3;
 
@@ -112,21 +93,22 @@ public class AirScooter implements Ability {
 
         int horizontalParticles = 10;
         double radius = 0.6;
+        ImmutableVector location = user.getLocation();
         for (int i = 0; i < horizontalParticles; ++i) {
             double angle = ((Math.PI * 2) / horizontalParticles) * i;
-
             double x = radius * Math.cos(angle) * Math.sin(verticalPosition);
             double y = radius * Math.cos(verticalPosition);
             double z = radius * Math.sin(angle) * Math.sin(verticalPosition);
-            AirElement.display(livingEntity.getLocation().add(x, y, z), 2, 0.0f, 0.0f, 0.0f, 0.0f, ThreadLocalRandom.current().nextInt(20) == 0);
+            AirElement.display(location.add(x, y, z).toLocation(world), 2, 0.0f, 0.0f, 0.0f, false);
         }
+        AirElement.sound(location.toLocation(world));
     }
 
     private boolean move() {
         if (isColliding()) {
             return false;
         }
-        double height = WorldUtils.getDistanceAboveGround(livingEntity, false);
+        double height = user.getDistanceAboveGround();
         double smoothedHeight = heightSmoother.add(height);
         if (livingEntity.getLocation().getBlock().isLiquid()) {
             height = 0.5;
@@ -135,29 +117,28 @@ public class AirScooter implements Ability {
         }
         double delta = getPrediction() - height;
         double force = Math.max(-0.5, Math.min(0.5, 0.3 * delta));
-        Vector3d velocity = new Vector3d(livingEntity.getEyeLocation().getDirection()).setY(0).normalize().multiply(AirScooter.speed).setY(force);
-        livingEntity.setVelocity(velocity.toBukkitVector());
+        ImmutableVector velocity = user.getDirection().setY(0).normalize().multiply(speed).setY(force);
+        AbilityTarget.of(livingEntity).setVelocity(velocity, this);
         livingEntity.setFallDistance(0);
         return true;
     }
 
     private boolean isColliding() {
-        Location eyeLocation = livingEntity.getEyeLocation();
         double speed = livingEntity.getVelocity().setY(0).length();
-        Vector3d direction = new Vector3d(eyeLocation.getDirection()).setY(0).normalize(Vector3d.ZERO);
-        Vector3d front = new Vector3d(eyeLocation).subtract(new Vector3d(0, 0.5, 0))
+        ImmutableVector direction = user.getDirection().setY(0).normalize(ImmutableVector.ZERO);
+        ImmutableVector front = user.getEyeLocation().subtract(0, 0.5, 0)
                 .add(direction.multiply(Math.max(speed, AirScooter.speed)));
-        Block block = front.toBlock(livingEntity.getWorld());
+        Block block = front.toBlock(world);
         return !block.isLiquid() && !block.isPassable();
     }
 
     private double getPrediction() {
         double playerSpeed = livingEntity.getVelocity().setY(0).length();
         double speed = Math.max(AirScooter.speed, playerSpeed) * 3;
-        Vector3d offset = new Vector3d(livingEntity.getEyeLocation().getDirection()).setY(0).normalize().multiply(speed);
-        Vector3d location = new Vector3d(livingEntity.getLocation()).add(offset);
-        AABB userBounds = AABB.from(livingEntity).at(location);
-        if (!WorldUtils.getNearbyBlocks(livingEntity.getWorld(), userBounds, block -> true, 1).isEmpty()) {
+        ImmutableVector offset = user.getDirection().setY(0).normalize().multiply(speed);
+        ImmutableVector location = user.getLocation().add(offset);
+        AxisAlignedBoundingBoxCollider alignedBoundingBoxCollider = new AxisAlignedBoundingBoxCollider(livingEntity).at(location);
+        if (alignedBoundingBoxCollider.handleBlockCollisions(false)) {
             return 2.25;
         }
         return 1.25;
