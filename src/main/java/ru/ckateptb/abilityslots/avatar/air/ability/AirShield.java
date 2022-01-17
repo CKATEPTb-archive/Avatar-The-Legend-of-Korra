@@ -76,7 +76,7 @@ public class AirShield extends Ability {
                 .duration(duration)
                 .costInterval(energyCostInterval)
                 .slot()
-                .custom((user, ability) -> user.getCenterLocation().toBlock(world).isLiquid())
+                .liquid(false)
                 .build();
         Location center = user.getCenterLocation().toLocation(world);
         return !center.getBlock().isLiquid() && user.canUse(center) && user.removeEnergy(this) ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;

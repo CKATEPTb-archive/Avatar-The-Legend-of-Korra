@@ -47,7 +47,7 @@ public class AirElement extends AbstractAbilityCategory {
                 world.playSound(location, Sound.ENTITY_CREEPER_HURT, 1, 2);
             }
         }
-        Particle.SPELL.display(location, amount, offsetX, offsetY, offsetZ);
+        Particle.SPELL.display(location, amount, offsetX, offsetY, offsetZ, extra);
     }
 
     public static void sound(Location location) {
