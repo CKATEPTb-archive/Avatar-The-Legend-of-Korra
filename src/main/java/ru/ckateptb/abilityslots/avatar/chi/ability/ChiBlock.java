@@ -83,7 +83,7 @@ public class ChiBlock extends Ability {
     public class ChiBlockHandler implements Listener {
 
         @EventHandler(ignoreCancelled = true)
-        public void onPlayerMove(EntityDamageByEntityEvent event) {
+        public void onDamage(EntityDamageByEntityEvent event) {
             Entity damager = event.getDamager();
             if (damager == livingEntity) {
                 Entity target = event.getEntity();
