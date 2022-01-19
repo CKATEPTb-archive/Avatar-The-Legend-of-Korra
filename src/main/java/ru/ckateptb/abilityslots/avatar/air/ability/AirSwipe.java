@@ -96,7 +96,7 @@ public class AirSwipe extends Ability {
             }
         }
 
-        if (method == ActivationMethod.LEFT_CLICK) {
+        if (ActivationMethod.LEFT_CLICK.equals(method)) {
             launch();
         }
 

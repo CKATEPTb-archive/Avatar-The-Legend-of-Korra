@@ -76,7 +76,7 @@ public class AirBlast extends Ability {
         if (method == ActivationMethod.SNEAK && !ability.selectOriginal()) {
             return ActivateResult.NOT_ACTIVATE;
         }
-        if (method == ActivationMethod.LEFT_CLICK && user.removeEnergy(this)) {
+        if (ActivationMethod.LEFT_CLICK.equals(method) && user.removeEnergy(this)) {
             ability.launch();
         }
         return ability == this ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;

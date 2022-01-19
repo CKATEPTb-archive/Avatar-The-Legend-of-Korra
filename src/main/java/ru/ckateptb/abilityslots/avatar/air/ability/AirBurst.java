@@ -82,7 +82,7 @@ public class AirBurst extends Ability {
 
     @Override
     public ActivateResult activate(ActivationMethod method) {
-        if (method == ActivationMethod.LEFT_CLICK) {
+        if (ActivationMethod.LEFT_CLICK.equals(method)) {
             user.getAbilityInstances(AirBurst.class).stream()
                     .findFirst()
                     .ifPresent(airBurst -> airBurst.release(Mode.CONE));
