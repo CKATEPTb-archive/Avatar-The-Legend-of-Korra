@@ -2,24 +2,28 @@ package ru.ckateptb.abilityslots.avatar.earth.ability.passive;
 
 import com.destroystokyo.paper.MaterialTags;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
+import ru.ckateptb.abilityslots.AbilitySlots;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
+import ru.ckateptb.abilityslots.avatar.air.ability.passive.GracefulDescent;
 import ru.ckateptb.abilityslots.avatar.earth.EarthElement;
-import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
-import ru.ckateptb.tablecloth.util.WorldUtils;
 
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -29,7 +33,7 @@ import java.util.function.Predicate;
         author = "CKATEPTb",
         name = "DensityShift",
         displayName = "DensityShift",
-        activationMethods = {ActivationMethod.PASSIVE, ActivationMethod.FALL},
+        activationMethods = {ActivationMethod.PASSIVE},
         category = "earth",
         description = "This passive ability prevents EarthBender from taking damage when falling to the earth.",
         instruction = "Passive Ability",
@@ -41,12 +45,13 @@ public class DensityShift extends Ability {
     @ConfigField
     private static double radius = 2.0;
 
+    private FallHandler listener;
+
     @Override
     public ActivateResult activate(ActivationMethod method) {
-        if (method == ActivationMethod.FALL && getAbilityInstanceService().hasAbility(user, getClass())) {
-            return shouldPrevent() ? ActivateResult.NOT_ACTIVATE_AND_CANCEL_EVENT : ActivateResult.NOT_ACTIVATE;
-        }
-        return method == ActivationMethod.PASSIVE ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;
+        this.listener = new FallHandler();
+        Bukkit.getPluginManager().registerEvents(listener, AbilitySlots.getInstance());
+        return ActivateResult.ACTIVATE;
     }
 
     private boolean shouldPrevent() {
@@ -92,5 +97,19 @@ public class DensityShift extends Ability {
 
     @Override
     public void destroy() {
+        EntityDamageEvent.getHandlerList().unregister(listener);
+    }
+
+    private class FallHandler implements Listener {
+        @EventHandler(ignoreCancelled = true)
+        public void on(EntityDamageEvent event) {
+            if (event.getCause() == EntityDamageEvent.DamageCause.FALL) {
+                if (event.getEntity() instanceof LivingEntity entity && livingEntity == entity) {
+                    if (shouldPrevent()) {
+                        event.setCancelled(true);
+                    }
+                }
+            }
+        }
     }
 }

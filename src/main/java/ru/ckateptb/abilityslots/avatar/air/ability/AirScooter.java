@@ -1,8 +1,15 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import ru.ckateptb.abilityslots.AbilitySlots;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -22,7 +29,7 @@ import java.util.Arrays;
         author = "CKATEPTb",
         name = "AirScooter",
         displayName = "AirScooter",
-        activationMethods = {ActivationMethod.LEFT_CLICK, ActivationMethod.DAMAGE},
+        activationMethods = {ActivationMethod.LEFT_CLICK},
         category = "air",
         description = "Creates a balloon under your feet for movement",
         instruction = "Jump and Left Click at sprinting time",
@@ -44,10 +51,11 @@ public class AirScooter extends Ability {
     public boolean canRender = true;
     private double verticalPosition = 0;
     private int stuckCount = 0;
+    private Listener damageHandler;
 
     @Override
     public ActivateResult activate(ActivationMethod method) {
-        if (getAbilityInstanceService().destroyInstanceType(user, AirScooter.class) || method == ActivationMethod.DAMAGE) {
+        if (user.destroyInstances(AirScooter.class)) {
             return ActivateResult.NOT_ACTIVATE;
         }
         this.heightSmoother = new HeightSmoother();
@@ -65,7 +73,12 @@ public class AirScooter extends Ability {
                 .duration(duration)
                 .costInterval(energyCostInterval)
                 .build();
-        return !location.getBlock().isLiquid() && (withoutSprinting || user.isSprinting()) ? ActivateResult.ACTIVATE : ActivateResult.NOT_ACTIVATE;
+        if (!location.getBlock().isLiquid() && (withoutSprinting || user.isSprinting())) {
+            this.damageHandler = new DamageHandler();
+            Bukkit.getPluginManager().registerEvents(damageHandler, AbilitySlots.getInstance());
+            return ActivateResult.ACTIVATE;
+        }
+        return ActivateResult.NOT_ACTIVATE;
     }
 
     @Override
@@ -83,6 +96,7 @@ public class AirScooter extends Ability {
 
     @Override
     public void destroy() {
+        EntityDamageEvent.getHandlerList().unregister(damageHandler);
         user.setCooldown(this);
     }
 
@@ -161,6 +175,16 @@ public class AirScooter extends Ability {
 
         private double get() {
             return Arrays.stream(values).sum() / values.length;
+        }
+    }
+
+
+    public class DamageHandler implements Listener {
+        @EventHandler
+        public void on(EntityDamageEvent event) {
+            if (event.getEntity() instanceof LivingEntity entity && entity == livingEntity) {
+                user.destroyInstances(AirScooter.class);
+            }
         }
     }
 }

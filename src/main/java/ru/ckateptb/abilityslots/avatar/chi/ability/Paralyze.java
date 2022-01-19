@@ -49,7 +49,7 @@ public class Paralyze extends Ability {
         this.removal = new RemovalConditional.Builder().offline().dead().world().duration(duration).build();
 
         user.setCooldown(this);
-        return ActivateResult.ACTIVATE_AND_CANCEL_EVENT;
+        return ActivateResult.ACTIVATE;
     }
 
     @Override

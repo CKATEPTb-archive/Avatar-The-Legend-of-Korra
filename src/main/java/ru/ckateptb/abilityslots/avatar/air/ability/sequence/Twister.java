@@ -85,7 +85,7 @@ public class Twister extends Ability {
 
     @Override
     public ActivateResult activate(ActivationMethod method) {
-        getAbilityInstanceService().destroyInstanceType(user, AirBlast.class);
+        user.destroyInstances(AirBlast.class);
         this.startTime = System.currentTimeMillis();
         this.direction = user.getDirection().setY(0).normalize();
         this.base = user.getLocation().add(direction.multiply(2));

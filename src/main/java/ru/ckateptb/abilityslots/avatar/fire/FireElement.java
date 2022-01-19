@@ -55,22 +55,22 @@ public class FireElement extends AbstractAbilityCategory {
         (isBlueFireBender(user) ? Particle.SOUL_FIRE_FLAME : Particle.FLAME).display(location, amount, offsetX, offsetY, offsetZ, extra);
     }
 
-    public static void igniteBlocks(Location center, double radius) {
-        igniteBlocks(center.getWorld(), new ImmutableVector(center), radius);
+    public static void igniteBlocks(AbilityUser user, Location center, double radius) {
+        igniteBlocks(user, center.getWorld(), new ImmutableVector(center), radius);
     }
 
-    public static void igniteBlocks(World world, ImmutableVector center, double radius) {
+    public static void igniteBlocks(AbilityUser user, World world, ImmutableVector center, double radius) {
         new SphereCollider(world, center, radius).handleBlockCollisions(block -> {
-            igniteBlock(block.getRelative(BlockFace.UP));
+            igniteBlock(user, block.getRelative(BlockFace.UP));
             return CollisionCallbackResult.CONTINUE;
         });
     }
 
-    public static boolean igniteBlock(Block block) {
-        return igniteBlock(block, ThreadLocalRandom.current().nextLong(minFireDuration, maxFireDuration));
+    public static boolean igniteBlock(AbilityUser user, Block block) {
+        return igniteBlock(user, block, ThreadLocalRandom.current().nextLong(minFireDuration, maxFireDuration));
     }
 
-    public static boolean igniteBlock(Block block, long duration) {
+    public static boolean igniteBlock(AbilityUser user, Block block, long duration) {
         BlockState state = block.getState(false);
         boolean light = false;
         if (state instanceof Furnace furnace) {
@@ -89,7 +89,8 @@ public class FireElement extends AbstractAbilityCategory {
         if (block.isPassable() && !block.isLiquid()) {
             AxisAlignedBoundingBoxCollider alignedBoundingBoxCollider = new AxisAlignedBoundingBoxCollider(block.getRelative(BlockFace.DOWN));
             if (alignedBoundingBoxCollider.getHalfExtents().getY() == 0.5) {
-                new TemporaryBlock(block.getLocation(), Material.FIRE.createBlockData(), duration);
+                Material fire = isBlueFireBender(user) ? Material.SOUL_FIRE : Material.FIRE;
+                new TemporaryBlock(block.getLocation(), fire.createBlockData(), duration);
                 return true;
             }
         }

@@ -64,9 +64,8 @@ public class AirSlam extends Ability {
 
         this.target = AbilityTarget.of(target);
 
-        AbilityInstanceService abilityInstanceService = getAbilityInstanceService();
-        abilityInstanceService.destroyInstanceType(user, AirSwipe.class);
-        abilityInstanceService.destroyInstanceType(user, AirBlast.class);
+        user.destroyInstances(AirSwipe.class);
+        user.destroyInstances(AirBlast.class);
 
         this.removal = new RemovalConditional.Builder()
                 .offline()

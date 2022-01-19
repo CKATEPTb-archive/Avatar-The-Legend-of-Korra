@@ -89,7 +89,7 @@ public class AirSwipe extends Ability {
                 .world()
                 .build();
 
-        for (AirSwipe swipe : getAbilityInstanceService().getAbilityUserInstances(user, AirSwipe.class)) {
+        for (AirSwipe swipe : user.getAbilityInstances(AirSwipe.class)) {
             if (swipe.charging) {
                 swipe.launch();
                 return ActivateResult.NOT_ACTIVATE;

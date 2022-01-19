@@ -72,9 +72,8 @@ public class AirStream extends Ability {
 
     @Override
     public ActivateResult activate(ActivationMethod method) {
-        AbilityInstanceService abilityInstanceService = getAbilityInstanceService();
-        abilityInstanceService.destroyInstanceType(user, AirBlast.class);
-        abilityInstanceService.destroyInstanceType(user, AirSuction.class);
+        user.destroyInstances(AirBlast.class);
+        user.destroyInstances(AirSuction.class);
 
         this.location = user.getEyeLocation();
         this.origin = this.location;
@@ -100,8 +99,7 @@ public class AirStream extends Ability {
         ImmutableVector previous = location;
         ImmutableVector direction = getDirection();
         location = location.add(direction.multiply(speed));
-        AbilityInstanceService abilityInstanceService = getAbilityInstanceService();
-        for (AirBlast blast : abilityInstanceService.getAbilityUserInstances(user, AirBlast.class)) {
+        for (AirBlast blast : user.getAbilityInstances(AirBlast.class)) {
             ImmutableVector blastLocation = blast.getLocation();
             if (blastLocation.distance(origin) < range) {
                 this.location = blastLocation;

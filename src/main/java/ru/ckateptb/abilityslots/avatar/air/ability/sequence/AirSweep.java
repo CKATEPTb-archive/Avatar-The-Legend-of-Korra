@@ -87,7 +87,7 @@ public class AirSweep extends Ability {
 
     @Override
     public ActivateResult activate(ActivationMethod method) {
-        getAbilityInstanceService().destroyInstanceType(user, AirBurst.class);
+        user.destroyInstances(AirBurst.class);
         this.startTime = System.currentTimeMillis();
         this.spline = new CubicHermiteSpline(0.1);
         this.linear = "linear".equalsIgnoreCase(interpolationMethod);
