@@ -1,6 +1,9 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
-import lombok.Getter;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -10,12 +13,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.AbilitySlots;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
+import ru.ckateptb.abilityslots.ability.info.AbilityInformation;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.avatar.air.AirElement;
 import ru.ckateptb.abilityslots.entity.AbilityTarget;
@@ -24,14 +30,10 @@ import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.Collider;
 import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
+import ru.ckateptb.tablecloth.ioc.IoC;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-import ru.ckateptb.tablecloth.spring.SpringContext;
 import ru.ckateptb.tablecloth.temporary.TemporaryService;
 import ru.ckateptb.tablecloth.temporary.flight.TemporaryFlight;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.concurrent.CompletableFuture;
 
 @Getter
 @AbilityInfo(
@@ -60,6 +62,11 @@ public class AirSpout extends Ability {
     @ConfigField
     private static long energyCostInterval = 1000;
 
+    
+    @ConfigField
+    private static int force = 3;
+    
+    
     private AxisAlignedBoundingBoxCollider collider;
     private TemporaryFlight flight;
     private long nextRenderTime;
@@ -146,7 +153,7 @@ public class AirSpout extends Ability {
 
     @Override
     public void destroy() {
-        SpringContext.getInstance().getBean(TemporaryService.class).revert(flight);
+        IoC.get(TemporaryService.class).revert(flight);
         this.user.setCooldown(this);
         PlayerMoveEvent.getHandlerList().unregister(moveHandler);
     }
@@ -166,9 +173,17 @@ public class AirSpout extends Ability {
             if (event.getPlayer().equals(entity)) {
                 ImmutableVector velocity = new ImmutableVector(entity.getVelocity()).setY(0);
 //                ImmutableVector velocity = new ImmutableVector(event.getTo().clone().subtract(event.getFrom())).setY(0);
+                
                 if (velocity.length() > maxSpeed) {
                     velocity = velocity.normalize().multiply(maxSpeed);
                 }
+                
+                if (event.getPlayer().isSneaking())
+                {
+                	velocity = new ImmutableVector(entity.getLocation().getDirection().normalize().multiply(maxSpeed).multiply(force));
+                	user.removeEnergy((spout.getInformation().getCost()/20)*(force-1));
+                }
+                
                 AbilityTarget.of(entity).setVelocity(velocity, spout);
             }
         }

@@ -1,14 +1,19 @@
 package ru.ckateptb.abilityslots.common.paper;
 
-import com.google.common.collect.Lists;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 import org.bukkit.Keyed;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import com.google.common.collect.Lists;
 
 public abstract class BaseTag<T extends Keyed, C extends BaseTag<T, C>> implements Tag<T> {
 

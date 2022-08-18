@@ -1,11 +1,12 @@
 package ru.ckateptb.abilityslots.avatar.earth.ability;
 
-import lombok.Getter;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;

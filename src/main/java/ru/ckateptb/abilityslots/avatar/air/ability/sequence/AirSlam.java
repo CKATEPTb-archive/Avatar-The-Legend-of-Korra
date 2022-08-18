@@ -1,7 +1,8 @@
 package ru.ckateptb.abilityslots.avatar.air.ability.sequence;
 
-import lombok.Getter;
 import org.bukkit.entity.LivingEntity;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -16,7 +17,6 @@ import ru.ckateptb.abilityslots.avatar.air.ability.AirSwipe;
 import ru.ckateptb.abilityslots.entity.AbilityTarget;
 import ru.ckateptb.abilityslots.entity.AbilityTargetLiving;
 import ru.ckateptb.abilityslots.predicate.RemovalConditional;
-import ru.ckateptb.abilityslots.service.AbilityInstanceService;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
 

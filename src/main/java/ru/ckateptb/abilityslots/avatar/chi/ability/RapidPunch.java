@@ -1,9 +1,10 @@
 package ru.ckateptb.abilityslots.avatar.chi.ability;
 
-import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;

@@ -1,8 +1,15 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
-import lombok.Getter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.AbilityCollisionResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
@@ -21,12 +28,6 @@ import ru.ckateptb.tablecloth.collision.collider.RayCollider;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 @AbilityInfo(
@@ -82,7 +83,7 @@ public class AirBurst extends Ability {
 
     @Override
     public ActivateResult activate(ActivationMethod method) {
-        if (ActivationMethod.LEFT_CLICK.equals(method)) {
+        if (method == ActivationMethod.LEFT_CLICK) {
             user.getAbilityInstances(AirBurst.class).stream()
                     .findFirst()
                     .ifPresent(airBurst -> airBurst.release(Mode.CONE));

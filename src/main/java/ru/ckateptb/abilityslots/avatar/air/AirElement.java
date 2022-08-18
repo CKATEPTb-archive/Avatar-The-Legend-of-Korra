@@ -1,19 +1,20 @@
 package ru.ckateptb.abilityslots.avatar.air;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+
+import lombok.Getter;
+import lombok.Setter;
 import ru.ckateptb.abilityslots.category.AbstractAbilityCategory;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.particle.Particle;
 import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
-
-import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 @Setter

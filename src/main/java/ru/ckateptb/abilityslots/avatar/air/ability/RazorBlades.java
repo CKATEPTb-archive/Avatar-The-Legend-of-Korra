@@ -29,19 +29,19 @@ import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 @Getter
 @AbilityInfo(
-        author = "CKATEPTb",
-        name = "AirBlade",
-        displayName = "AirBlade",
+        author = "MordaSobaki",
+        name = "RazorBlades",
+        displayName = "RazorBlades",
         activationMethods = {ActivationMethod.LEFT_CLICK},
         category = "air",
-        description = "Gathers air into an improvised blade that slices through the air in front of you, damaging your targets",
-        instruction = "Left Click",
-        cooldown = 3500,
-        cost = 10
+        description = "Маги воздуха могут создававать лезвия из воздуха",
+        instruction = "Кликнуть ЛКМ",
+        cooldown = 7000,
+        cost = 5
 )
 @CollisionParticipant
-public class AirBlade extends Ability {
-    @ConfigField
+public class RazorBlades extends Ability {
+	@ConfigField
     private static double damage = 4;
     @ConfigField
     private static double range = 20;
@@ -102,10 +102,17 @@ public class AirBlade extends Ability {
             if (currentRadius < minRadius) break;
         }
         CompletableFuture.runAsync(() -> {
-            ImmutableVector rotateAxis = ImmutableVector.PLUS_J.crossProduct(this.direction);
+            ImmutableVector rotateAxis = ImmutableVector.PLUS_J.setX(1).crossProduct(this.direction);
             VectorUtils.circle(this.direction.multiply(currentRadius), rotateAxis, 40).forEach(v ->
                     AirElement.display(location.add(v).toLocation(world), 1, 0, 0, 0, false)
             );
+            rotateAxis = ImmutableVector.PLUS_J.setX(-1).crossProduct(this.direction);
+            VectorUtils.circle(this.direction.multiply(currentRadius), rotateAxis, 40).forEach(v ->
+            		AirElement.display(location.add(v).toLocation(world), 1, 0, 0, 0, false)
+            );
+            
+            
+            
             AirElement.sound(location.toLocation(world));
         });
         this.location = location.add(direction.multiply(speed));

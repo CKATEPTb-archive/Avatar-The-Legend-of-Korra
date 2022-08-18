@@ -1,10 +1,15 @@
 package ru.ckateptb.abilityslots.avatar.earth;
 
-import lombok.Getter;
-import lombok.Setter;
-import org.bukkit.*;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.checkerframework.checker.nullness.qual.NonNull;
+
+import lombok.Getter;
+import lombok.Setter;
 import ru.ckateptb.abilityslots.avatar.earth.ability.subcategories.LavaBender;
 import ru.ckateptb.abilityslots.avatar.earth.ability.subcategories.MetalBender;
 import ru.ckateptb.abilityslots.avatar.earth.ability.subcategories.SandBender;
@@ -15,7 +20,7 @@ import ru.ckateptb.abilityslots.common.paper.PersistentDataLayer;
 import ru.ckateptb.abilityslots.service.AbilityInstanceService;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.config.ConfigField;
-import ru.ckateptb.tablecloth.spring.SpringContext;
+import ru.ckateptb.tablecloth.ioc.IoC;
 
 @Getter
 @Setter
@@ -152,17 +157,17 @@ public class EarthElement extends AbstractAbilityCategory {
     }
 
     private static boolean isMetalBender(AbilityUser user) {
-        AbilityInstanceService abilityInstanceService = SpringContext.getInstance().getBean(AbilityInstanceService.class);
+        AbilityInstanceService abilityInstanceService = IoC.get(AbilityInstanceService.class);
         return abilityInstanceService.hasAbility(user, MetalBender.class);
     }
 
     private static boolean isLavaBender(AbilityUser user) {
-        AbilityInstanceService abilityInstanceService = SpringContext.getInstance().getBean(AbilityInstanceService.class);
+        AbilityInstanceService abilityInstanceService = IoC.get(AbilityInstanceService.class);
         return abilityInstanceService.hasAbility(user, LavaBender.class);
     }
 
     private static boolean isSandBender(AbilityUser user) {
-        AbilityInstanceService abilityInstanceService = SpringContext.getInstance().getBean(AbilityInstanceService.class);
+        AbilityInstanceService abilityInstanceService = IoC.get(AbilityInstanceService.class);
         return abilityInstanceService.hasAbility(user, SandBender.class);
     }
 

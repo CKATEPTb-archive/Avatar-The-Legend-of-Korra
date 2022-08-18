@@ -1,16 +1,16 @@
 package ru.ckateptb.abilityslots.common.util;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.collision.collider.RayCollider;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
 import ru.ckateptb.tablecloth.math.Rotation;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class VectorUtils {

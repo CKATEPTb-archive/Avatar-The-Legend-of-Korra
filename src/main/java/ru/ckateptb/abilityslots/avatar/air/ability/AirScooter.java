@@ -1,14 +1,16 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
-import lombok.Getter;
+import java.util.Arrays;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.AbilitySlots;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
@@ -21,8 +23,6 @@ import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.tablecloth.collision.collider.AxisAlignedBoundingBoxCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-
-import java.util.Arrays;
 
 @Getter
 @AbilityInfo(

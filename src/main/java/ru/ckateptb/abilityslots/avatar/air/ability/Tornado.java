@@ -1,9 +1,14 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
-import lombok.Getter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -22,10 +27,6 @@ import ru.ckateptb.tablecloth.collision.collider.OrientedBoundingBoxCollider;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 
 @Getter
 @AbilityInfo(
