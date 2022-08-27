@@ -1,12 +1,13 @@
 package ru.ckateptb.abilityslots.avatar.water;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.checkerframework.checker.nullness.qual.NonNull;
+
+import lombok.Getter;
+import lombok.Setter;
 import ru.ckateptb.abilityslots.category.AbstractAbilityCategory;
 import ru.ckateptb.abilityslots.common.paper.MaterialSetTag;
 import ru.ckateptb.abilityslots.common.paper.MaterialTags;

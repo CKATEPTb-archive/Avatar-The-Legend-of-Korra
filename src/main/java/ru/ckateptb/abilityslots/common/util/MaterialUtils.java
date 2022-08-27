@@ -1,7 +1,8 @@
 package ru.ckateptb.abilityslots.common.util;
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
+import java.util.Map;
+import java.util.Objects;
+
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
@@ -12,13 +13,13 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.block.data.Waterlogged;
 import org.bukkit.inventory.InventoryHolder;
+
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.ckateptb.abilityslots.avatar.water.WaterElement;
 import ru.ckateptb.abilityslots.common.paper.MaterialSetTag;
 import ru.ckateptb.abilityslots.common.paper.MaterialTags;
 import ru.ckateptb.abilityslots.common.paper.PersistentDataLayer;
-
-import java.util.Map;
-import java.util.Objects;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MaterialUtils {

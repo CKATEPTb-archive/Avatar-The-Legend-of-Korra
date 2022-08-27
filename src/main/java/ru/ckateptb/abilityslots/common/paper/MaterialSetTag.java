@@ -1,6 +1,11 @@
 package ru.ckateptb.abilityslots.common.paper;
 
-import com.google.common.collect.Lists;
+import java.util.Collection;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
@@ -10,11 +15,7 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import com.google.common.collect.Lists;
 
 public class MaterialSetTag extends BaseTag<Material, MaterialSetTag> {
 

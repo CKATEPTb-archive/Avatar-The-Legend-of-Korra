@@ -1,9 +1,12 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
-import lombok.Getter;
+import java.util.Objects;
+
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -17,10 +20,8 @@ import ru.ckateptb.abilityslots.predicate.RemovalConditional;
 import ru.ckateptb.abilityslots.service.AbilityUserService;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.config.ConfigField;
+import ru.ckateptb.tablecloth.ioc.IoC;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-import ru.ckateptb.tablecloth.spring.SpringContext;
-
-import java.util.Objects;
 
 @Getter
 @AbilityInfo(
@@ -126,7 +127,7 @@ public class Suffocate extends Ability {
             this.nextSlowTime = startTime + slowDelay;
             this.nextBlindTime = startTime + blindDelay;
 
-            AbilityUser target = SpringContext.getInstance().getBean(AbilityUserService.class).getAbilityUser(this.target);
+            AbilityUser target = IoC.get(AbilityUserService.class).getAbilityUser(this.target);
             if (target != null) {
                 // Prevent the user from bending.
                 conditional = (user, ability) -> false;
@@ -195,7 +196,7 @@ public class Suffocate extends Ability {
     @Override
     public void destroy() {
         user.setCooldown(this);
-        AbilityUser target = SpringContext.getInstance().getBean(AbilityUserService.class).getAbilityUser(this.target);
+        AbilityUser target = IoC.get(AbilityUserService.class).getAbilityUser(this.target);
         if (this.started && target != null) {
             // Allow the user to bend again.
             target.removeAbilityActivateConditional(conditional);

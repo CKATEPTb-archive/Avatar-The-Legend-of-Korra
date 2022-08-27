@@ -1,6 +1,11 @@
 package ru.ckateptb.abilityslots.avatar.chi.ability;
 
-import lombok.NoArgsConstructor;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
@@ -8,6 +13,8 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+
+import lombok.NoArgsConstructor;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -18,14 +25,8 @@ import ru.ckateptb.abilityslots.predicate.AbilityConditional;
 import ru.ckateptb.abilityslots.service.AbilityUserService;
 import ru.ckateptb.abilityslots.user.AbilityUser;
 import ru.ckateptb.tablecloth.config.ConfigField;
+import ru.ckateptb.tablecloth.ioc.IoC;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-import ru.ckateptb.tablecloth.spring.SpringContext;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 @AbilityInfo(
         author = "CKATEPTb",
@@ -88,7 +89,7 @@ public class ChiBlock extends Ability {
             if (damager == livingEntity) {
                 Entity target = event.getEntity();
                 if(!(target instanceof LivingEntity targetLiving)) return;
-                AbilityUser targetUser = SpringContext.getInstance().getBean(AbilityUserService.class).getAbilityUser(targetLiving);
+                AbilityUser targetUser = IoC.get(AbilityUserService.class).getAbilityUser(targetLiving);
                 if (targetUser != null) {
                     double activationAngle = Math.toRadians(backAttackAngle);
                     ImmutableVector targetDirection = targetUser.getDirection().setY(0).normalize();

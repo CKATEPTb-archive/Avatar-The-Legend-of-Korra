@@ -1,10 +1,14 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
-import lombok.Getter;
+import java.util.Collection;
+import java.util.Collections;
+
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -21,9 +25,6 @@ import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-
-import java.util.Collection;
-import java.util.Collections;
 
 @Getter
 @AbilityInfo(

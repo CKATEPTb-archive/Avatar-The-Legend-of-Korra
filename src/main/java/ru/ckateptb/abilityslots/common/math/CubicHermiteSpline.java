@@ -1,9 +1,9 @@
 package ru.ckateptb.abilityslots.common.math;
 
-import ru.ckateptb.tablecloth.math.ImmutableVector;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import ru.ckateptb.tablecloth.math.ImmutableVector;
 
 // Generates a spline, using cubic hermite curves, from a set of knots.
 // Set tension to 0 to generate a Catmull-Rom spline.

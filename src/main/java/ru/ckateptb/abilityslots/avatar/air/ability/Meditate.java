@@ -1,9 +1,10 @@
 package ru.ckateptb.abilityslots.avatar.air.ability;
 
-import lombok.Getter;
 import org.bukkit.Sound;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
@@ -46,6 +47,10 @@ public class Meditate extends Ability {
     public ActivateResult activate(ActivationMethod method) {
         this.startTime = System.currentTimeMillis();
         this.charged = false;
+        
+        
+        
+        
         return ActivateResult.ACTIVATE;
     }
 

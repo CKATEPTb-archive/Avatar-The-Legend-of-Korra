@@ -1,19 +1,18 @@
 package ru.ckateptb.abilityslots.avatar.earth.ability.passive;
 
-import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.avatar.earth.EarthElement;
-import ru.ckateptb.abilityslots.user.AbilityUser;
 
 @Getter
 @AbilityInfo(

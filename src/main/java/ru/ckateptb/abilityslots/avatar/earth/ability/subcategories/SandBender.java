@@ -1,13 +1,10 @@
 package ru.ckateptb.abilityslots.avatar.earth.ability.subcategories;
 
-import lombok.Getter;
-import lombok.Setter;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.user.AbilityUser;
 
 @AbilityInfo(
         author = "CKATEPTb",

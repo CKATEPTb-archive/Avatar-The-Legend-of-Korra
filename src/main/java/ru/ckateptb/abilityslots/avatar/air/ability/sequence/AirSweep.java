@@ -1,10 +1,20 @@
 package ru.ckateptb.abilityslots.avatar.air.ability.sequence;
 
-import lombok.Getter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.ability.Ability;
-import ru.ckateptb.abilityslots.ability.enums.*;
+import ru.ckateptb.abilityslots.ability.enums.AbilityCollisionResult;
+import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
+import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
+import ru.ckateptb.abilityslots.ability.enums.SequenceAction;
+import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
 import ru.ckateptb.abilityslots.ability.info.CollisionParticipant;
 import ru.ckateptb.abilityslots.ability.sequence.AbilityAction;
@@ -23,11 +33,6 @@ import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Getter
 @AbilityInfo(

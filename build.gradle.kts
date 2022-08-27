@@ -44,8 +44,8 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.22")
     annotationProcessor("org.projectlombok:lombok:1.18.22")
     paperDevBundle("1.17.1-R0.1-SNAPSHOT")
-    compileOnly("ru.ckateptb:tablecloth:+")
-    compileOnly("ru.ckateptb:abilityslots:+")
+    compileOnly(files("lib/Tablecloth.jar"))
+    compileOnly(files("lib/AbilitySlots.jar"))
 }
 
 tasks {

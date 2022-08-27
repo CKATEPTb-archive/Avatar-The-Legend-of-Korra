@@ -1,7 +1,8 @@
 package ru.ckateptb.abilityslots.avatar.earth.ability.passive;
 
-import com.destroystokyo.paper.MaterialTags;
-import lombok.Getter;
+import java.util.Objects;
+import java.util.function.Predicate;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -12,21 +13,21 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+
+import com.destroystokyo.paper.MaterialTags;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.AbilitySlots;
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;
 import ru.ckateptb.abilityslots.ability.enums.UpdateResult;
 import ru.ckateptb.abilityslots.ability.info.AbilityInfo;
-import ru.ckateptb.abilityslots.avatar.air.ability.passive.GracefulDescent;
 import ru.ckateptb.abilityslots.avatar.earth.EarthElement;
 import ru.ckateptb.tablecloth.collision.callback.CollisionCallbackResult;
 import ru.ckateptb.tablecloth.collision.collider.SphereCollider;
 import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
-
-import java.util.Objects;
-import java.util.function.Predicate;
 
 @Getter
 @AbilityInfo(

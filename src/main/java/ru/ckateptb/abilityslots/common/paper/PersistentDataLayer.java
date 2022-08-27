@@ -1,12 +1,13 @@
 package ru.ckateptb.abilityslots.common.paper;
 
-import lombok.Getter;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import lombok.Getter;
 import ru.ckateptb.abilityslots.AbilitySlots;
 
 public class PersistentDataLayer {

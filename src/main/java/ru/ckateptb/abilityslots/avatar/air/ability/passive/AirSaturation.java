@@ -1,6 +1,7 @@
 package ru.ckateptb.abilityslots.avatar.air.ability.passive;
 
 import org.bukkit.entity.Player;
+
 import ru.ckateptb.abilityslots.ability.Ability;
 import ru.ckateptb.abilityslots.ability.enums.ActivateResult;
 import ru.ckateptb.abilityslots.ability.enums.ActivationMethod;

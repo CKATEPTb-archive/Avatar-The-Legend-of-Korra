@@ -1,7 +1,7 @@
 package ru.ckateptb.abilityslots.avatar.fire;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -11,6 +11,9 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Furnace;
 import org.bukkit.block.data.Lightable;
+
+import lombok.Getter;
+import lombok.Setter;
 import ru.ckateptb.abilityslots.avatar.fire.ability.passive.BlueFire;
 import ru.ckateptb.abilityslots.category.AbstractAbilityCategory;
 import ru.ckateptb.abilityslots.common.util.MaterialUtils;
@@ -22,8 +25,6 @@ import ru.ckateptb.tablecloth.config.ConfigField;
 import ru.ckateptb.tablecloth.math.ImmutableVector;
 import ru.ckateptb.tablecloth.particle.Particle;
 import ru.ckateptb.tablecloth.temporary.block.TemporaryBlock;
-
-import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 @Setter
